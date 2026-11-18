@@ -42,3 +42,9 @@ jobs:
 
       - name: Summary
         run: echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)" >> "$GITHUB_STEP_SUMMARY"
+
+  test:
+    name: Test deployed API
+    needs: publish
+    uses: ./.github/workflows/04-test-api.yml
+    secrets: inherit

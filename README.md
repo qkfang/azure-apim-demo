@@ -6,7 +6,8 @@ Demo of Azure API Management + CI/CD with GitHub Actions.
 bicep/        main.bicep (APIM, Function App, plan, storage, App Insights), api.bicep (publishes API to APIM)
 src/functionapp/  Node.js (v4 model) Azure Function App exposing a REST API
 swagger/swagger.json  OpenAPI (Swagger 2.0) definition imported into APIM
-.github/workflows/    deploy-infra, deploy-functionapp, deploy-api
+.github/workflows/    01-deploy-infra, 02-deploy-functionapp, 03-deploy-api, 04-test-api
+tests/                integration tests for the deployed Function App and APIM endpoints
 ```
 
 ## REST API (Function App)
@@ -31,11 +32,25 @@ Run locally: `cd src/functionapp && npm ci && npm test`, then copy `local.settin
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `deploy-infra.yml` | changes to `bicep/main.*` | lint, what-if (PRs), deploy `main.bicep` |
-| `deploy-functionapp.yml` | changes to `src/functionapp/**` | test, zip, deploy to Function App, then calls `deploy-api.yml` |
-| `deploy-api.yml` | changes to `swagger/**` / `api.bicep`, or called | deploys `api.bicep`: imports `swagger.json` as an APIM API, sets backend + function key policy, product |
+| `01-deploy-infra.yml` | changes to `bicep/main.*` | lint, what-if (PRs), deploy `main.bicep` |
+| `02-deploy-functionapp.yml` | changes to `src/functionapp/**` | test, zip, deploy to Function App, then calls `03-deploy-api.yml` |
+| `03-deploy-api.yml` | changes to `swagger/**` / `api.bicep`, or called | deploys `api.bicep`: imports `swagger.json` as an APIM API, sets backend + function key policy, product, a `demo-tests` subscription; then calls `04-test-api.yml` |
+| `04-test-api.yml` | changes to `tests/**`, daily schedule, manual, or called | looks up the function key and APIM subscription key, runs `tests/` against both endpoints |
 
-Order for a first deployment: **Deploy infrastructure → Deploy Function App** (which also publishes the API).
+Order for a first deployment: **Deploy infrastructure → Deploy Function App** (which also publishes the API and runs the tests).
+
+## Integration tests
+
+`tests/` uses the built-in Node test runner (no dependencies) and checks the same contract (health, product CRUD,
+400/404 errors) against the Function App and APIM, plus that unauthenticated calls get 401. Suites are skipped when
+their URL isn't set.
+
+```
+cd tests
+$env:FUNCTION_BASE_URL = "https://func-<BASE_NAME>.azurewebsites.net/api"; $env:FUNCTION_KEY = "<function key>"
+$env:APIM_BASE_URL = "https://apim-<BASE_NAME>.azure-api.net/demo";       $env:APIM_SUBSCRIPTION_KEY = "<apim key>"
+npm test
+```
 
 ## One-time setup
 

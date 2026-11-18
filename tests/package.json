@@ -1,0 +1,12 @@
+{
+  "name": "apim-demo-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Integration tests for the deployed Function App and APIM endpoints.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

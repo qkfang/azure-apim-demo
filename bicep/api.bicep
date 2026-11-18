@@ -84,4 +84,15 @@ resource productApi 'Microsoft.ApiManagement/service/products/apis@2023-09-01-pr
   name: api.name
 }
 
+// Subscription used by the integration tests in tests/ (key fetched at runtime by the workflow).
+resource testSubscription 'Microsoft.ApiManagement/service/subscriptions@2023-09-01-preview' = {
+  parent: apim
+  name: 'demo-tests'
+  properties: {
+    displayName: 'Demo integration tests'
+    scope: product.id
+    state: 'active'
+  }
+}
+
 output apiBaseUrl string = '${apim.properties.gatewayUrl}/${apiPath}'
