@@ -1,4 +1,4 @@
-name: Deploy Function App
+name: 02-Deploy Function App
 
 on:
   push:
@@ -72,6 +72,7 @@ jobs:
         with:
           app-name: func-${{ vars.BASE_NAME }}
           package: functionapp.zip
+          sku: flexconsumption
 
   publish-api:
     name: Publish API to APIM

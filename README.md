@@ -54,4 +54,7 @@ Order for a first deployment: **Deploy infrastructure → Deploy Function App** 
 curl -H "Ocp-Apim-Subscription-Key: <key>" https://apim-<BASE_NAME>.azure-api.net/demo/products
 ```
 
+The Function App runs on Flex Consumption with identity-based storage (no storage keys), so it works in
+tenants where shared-key access is blocked by policy.
+
 APIM defaults to the `Consumption` SKU (fast, cheap). Override via the `apimSku` parameter.

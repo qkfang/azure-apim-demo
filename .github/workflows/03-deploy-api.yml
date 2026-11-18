@@ -1,4 +1,4 @@
-name: Publish API to APIM
+name: 03-Publish API to APIM
 
 on:
   push:

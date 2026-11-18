@@ -1,4 +1,4 @@
-name: Deploy infrastructure (Bicep)
+name: 01-Deploy infrastructure (Bicep)
 
 on:
   push:

@@ -51,46 +51,83 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   properties: {
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
+    allowSharedKeyAccess: false // key auth is blocked by policy in many tenants; use managed identity
     supportsHttpsTrafficOnly: true
   }
 }
 
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+var deploymentContainerName = 'app-package'
+
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: deploymentContainerName
+}
+
+// Flex Consumption works without storage account keys (identity-based storage + blob deployment).
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: 'plan-${baseName}'
+  name: 'plan-flex-${baseName}'
   location: location
-  kind: 'linux'
+  kind: 'functionapp'
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    name: 'FC1'
+    tier: 'FlexConsumption'
   }
   properties: {
     reserved: true
   }
 }
 
-var storageConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
-
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
   location: location
   kind: 'functionapp,linux'
+  identity: { type: 'SystemAssigned' }
   properties: {
     serverFarmId: plan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'Node|20'
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
       appSettings: [
-        { name: 'AzureWebJobsStorage', value: storageConnectionString }
-        { name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING', value: storageConnectionString }
-        { name: 'WEBSITE_CONTENTSHARE', value: toLower(functionAppName) }
-        { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
-        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' }
-        { name: 'WEBSITE_NODE_DEFAULT_VERSION', value: '~20' }
+        { name: 'AzureWebJobsStorage__accountName', value: storage.name }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
       ]
     }
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${storage.properties.primaryEndpoints.blob}${deploymentContainerName}'
+          authentication: { type: 'SystemAssignedIdentity' }
+        }
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 40
+        instanceMemoryMB: 2048
+      }
+      runtime: {
+        name: 'node'
+        version: '20'
+      }
+    }
+  }
+  dependsOn: [deploymentContainer]
+}
+
+var storageBlobDataOwnerRoleId = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
+
+resource storageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: storage
+  name: guid(storage.id, functionApp.id, storageBlobDataOwnerRoleId)
+  properties: {
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataOwnerRoleId)
   }
 }
 
