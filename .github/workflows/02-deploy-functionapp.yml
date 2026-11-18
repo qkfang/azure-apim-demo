@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/functionapp/**'
-      - '.github/workflows/deploy-functionapp.yml'
+      - '.github/workflows/02-deploy-functionapp.yml'
   pull_request:
     paths:
       - 'src/functionapp/**'
@@ -72,10 +72,9 @@ jobs:
         with:
           app-name: func-${{ vars.BASE_NAME }}
           package: functionapp.zip
-          sku: flexconsumption
 
   publish-api:
     name: Publish API to APIM
     needs: deploy
-    uses: ./.github/workflows/deploy-api.yml
+    uses: ./.github/workflows/03-deploy-api.yml
     secrets: inherit

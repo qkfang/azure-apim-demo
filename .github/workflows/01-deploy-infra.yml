@@ -6,7 +6,7 @@ on:
     paths:
       - 'bicep/main.bicep'
       - 'bicep/main.bicepparam'
-      - '.github/workflows/deploy-infra.yml'
+      - '.github/workflows/01-deploy-infra.yml'
   pull_request:
     paths:
       - 'bicep/**'

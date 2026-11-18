@@ -56,26 +56,15 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
-  parent: storage
-  name: 'default'
-}
-
-var deploymentContainerName = 'app-package'
-
-resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
-  parent: blobService
-  name: deploymentContainerName
-}
-
-// Flex Consumption works without storage account keys (identity-based storage + blob deployment).
+// Standard (dedicated) Linux plan. Consumption/Premium need a key-based Azure Files content share,
+// which is blocked when storage shared-key access is disabled.
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: 'plan-flex-${baseName}'
+  name: 'plan-${baseName}'
   location: location
-  kind: 'functionapp'
+  kind: 'linux'
   sku: {
-    name: 'FC1'
-    tier: 'FlexConsumption'
+    name: 'B1'
+    tier: 'Basic'
   }
   properties: {
     reserved: true
@@ -91,45 +80,37 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     siteConfig: {
+      linuxFxVersion: 'Node|20'
+      alwaysOn: true
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
       appSettings: [
         { name: 'AzureWebJobsStorage__accountName', value: storage.name }
+        { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
+        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' }
+        { name: 'WEBSITE_NODE_DEFAULT_VERSION', value: '~20' }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
       ]
     }
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          type: 'blobContainer'
-          value: '${storage.properties.primaryEndpoints.blob}${deploymentContainerName}'
-          authentication: { type: 'SystemAssignedIdentity' }
-        }
-      }
-      scaleAndConcurrency: {
-        maximumInstanceCount: 40
-        instanceMemoryMB: 2048
-      }
-      runtime: {
-        name: 'node'
-        version: '20'
-      }
-    }
   }
-  dependsOn: [deploymentContainer]
 }
 
-var storageBlobDataOwnerRoleId = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
+// Blob Data Owner, Queue Data Contributor, Table Data Contributor
+var storageRoleIds = [
+  'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
+  '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
+  '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+]
 
-resource storageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource storageRoles 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for roleId in storageRoleIds: {
   scope: storage
-  name: guid(storage.id, functionApp.id, storageBlobDataOwnerRoleId)
+  name: guid(storage.id, functionApp.id, roleId)
   properties: {
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataOwnerRoleId)
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleId)
   }
-}
+}]
 
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
   name: apimName

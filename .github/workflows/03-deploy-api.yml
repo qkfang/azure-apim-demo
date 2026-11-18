@@ -6,7 +6,7 @@ on:
     paths:
       - 'swagger/**'
       - 'bicep/api.bicep'
-      - '.github/workflows/deploy-api.yml'
+      - '.github/workflows/03-deploy-api.yml'
   workflow_dispatch:
   workflow_call:
 
