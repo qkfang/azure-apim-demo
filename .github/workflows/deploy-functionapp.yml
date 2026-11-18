@@ -1,0 +1,80 @@
+name: Deploy Function App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/functionapp/**'
+      - '.github/workflows/deploy-functionapp.yml'
+  pull_request:
+    paths:
+      - 'src/functionapp/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  APP_DIR: src/functionapp
+  NODE_VERSION: '20.x'
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
+
+      - name: Install and test
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          npm ci
+          npm test
+
+      - name: Install production dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci --omit=dev
+
+      - name: Package
+        working-directory: ${{ env.APP_DIR }}
+        run: zip -r ../../functionapp.zip . -x "test/*" "local.settings*.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: functionapp
+          path: functionapp.zip
+
+  deploy:
+    name: Deploy to Azure
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: functionapp
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy zip package
+        uses: Azure/functions-action@v1
+        with:
+          app-name: func-${{ vars.BASE_NAME }}
+          package: functionapp.zip
+
+  publish-api:
+    name: Publish API to APIM
+    needs: deploy
+    uses: ./.github/workflows/deploy-api.yml
+    secrets: inherit

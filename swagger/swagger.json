@@ -1,0 +1,162 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Demo Products API",
+    "description": "REST API implemented by an Azure Function App and published through Azure API Management.",
+    "version": "1.0"
+  },
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Health check",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "schema": { "$ref": "#/definitions/Health" }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "operationId": "listProducts",
+        "summary": "List products",
+        "tags": ["Products"],
+        "responses": {
+          "200": {
+            "description": "List of products",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/Product" }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProduct",
+        "summary": "Create a product",
+        "tags": ["Products"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/ProductInput" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Product created",
+            "schema": { "$ref": "#/definitions/Product" }
+          },
+          "400": {
+            "description": "Invalid input",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "integer",
+          "format": "int32",
+          "description": "Product id"
+        }
+      ],
+      "get": {
+        "operationId": "getProduct",
+        "summary": "Get a product",
+        "tags": ["Products"],
+        "responses": {
+          "200": {
+            "description": "The product",
+            "schema": { "$ref": "#/definitions/Product" }
+          },
+          "404": {
+            "description": "Product not found",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateProduct",
+        "summary": "Update a product",
+        "tags": ["Products"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/ProductInput" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product updated",
+            "schema": { "$ref": "#/definitions/Product" }
+          },
+          "400": {
+            "description": "Invalid input",
+            "schema": { "$ref": "#/definitions/Error" }
+          },
+          "404": {
+            "description": "Product not found",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProduct",
+        "summary": "Delete a product",
+        "tags": ["Products"],
+        "responses": {
+          "204": { "description": "Product deleted" },
+          "404": {
+            "description": "Product not found",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Health": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "example": "healthy" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ProductInput": {
+      "type": "object",
+      "required": ["name", "price"],
+      "properties": {
+        "name": { "type": "string", "example": "Widget" },
+        "price": { "type": "number", "format": "double", "minimum": 0, "example": 9.99 }
+      }
+    },
+    "Product": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "format": "int32", "example": 1 },
+        "name": { "type": "string", "example": "Widget" },
+        "price": { "type": "number", "format": "double", "example": 9.99 }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "error": { "type": "string" }
+      }
+    }
+  }
+}

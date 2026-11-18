@@ -1,0 +1,44 @@
+name: Publish API to APIM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'swagger/**'
+      - 'bicep/api.bicep'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    name: Import swagger into APIM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate swagger is valid JSON
+        run: jq empty swagger/swagger.json
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy api.bicep
+        run: |
+          az deployment group create \
+            --name "api-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/api.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" \
+            --query properties.outputs \
+            --output json | tee outputs.json
+
+      - name: Summary
+        run: echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)" >> "$GITHUB_STEP_SUMMARY"
