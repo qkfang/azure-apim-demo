@@ -63,8 +63,8 @@ resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   location: location
   kind: 'linux'
   sku: {
-    name: 'B1'
-    tier: 'Basic'
+    name: 'S1'
+    tier: 'Standard'
   }
   properties: {
     reserved: true
