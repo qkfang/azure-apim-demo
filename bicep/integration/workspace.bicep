@@ -5,16 +5,16 @@
 // Resource names must be unique across the whole APIM service, hence the 'ws-' / workspace-name prefixes.
 targetScope = 'resourceGroup'
 
-@description('Same base name used for main.bicep.')
+import { apimNameFor, functionAppNameFor, workspaceName, workspaceApiPath } from '../settings.bicep'
+
+@description('Same base name used for platform/main.bicep.')
 param baseName string
 
 @description('APIM URL suffix for the workspace copy of the API (paths must be unique per gateway).')
-param apiPath string = 'ws-products-api'
+param apiPath string = workspaceApiPath
 
-// Also used to prefix the resources created in the workspace.
-var workspaceName = 'products-team'
-var apimName = 'apim-${baseName}'
-var functionAppName = 'func-${baseName}'
+var apimName = apimNameFor(baseName)
+var functionAppName = functionAppNameFor(baseName)
 
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
   name: apimName

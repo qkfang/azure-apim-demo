@@ -2,6 +2,8 @@
 // Deploy after platform/main.bicep and before apps/functionapp.bicep.
 targetScope = 'resourceGroup'
 
+import { planNameFor } from '../settings.bicep'
+
 @description('Same base name used for main.bicep.')
 param baseName string
 
@@ -11,7 +13,7 @@ param location string = resourceGroup().location
 // Standard (dedicated) Linux plan. Consumption/Premium need a key-based Azure Files content share,
 // which is blocked when storage shared-key access is disabled.
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: 'plan-${baseName}'
+  name: planNameFor(baseName)
   location: location
   kind: 'linux'
   sku: {

@@ -2,10 +2,12 @@
 // Owned by the integration team. Run after apps/api.bicep (the APIs must exist).
 targetScope = 'resourceGroup'
 
-@description('Same base name used for main.bicep.')
+import { apimNameFor, productsApiName, productsMcpApiName } from '../settings.bicep'
+
+@description('Same base name used for platform/main.bicep.')
 param baseName string
 
-var apimName = 'apim-${baseName}'
+var apimName = apimNameFor(baseName)
 
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
   name: apimName
@@ -13,12 +15,12 @@ resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
 
 resource api 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' existing = {
   parent: apim
-  name: 'products-api'
+  name: productsApiName
 }
 
 resource mcpApi 'Microsoft.ApiManagement/service/apis@2025-09-01-preview' existing = {
   parent: apim
-  name: 'products-mcp'
+  name: productsMcpApiName
 }
 
 // Every product exposes the REST API and the MCP server.

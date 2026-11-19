@@ -2,17 +2,19 @@
 // Run after main.bicep and after the function code has been deployed (the host key must exist).
 targetScope = 'resourceGroup'
 
+import { apimNameFor, functionAppNameFor, productsApiName, productsMcpApiName, productsApiPath, productsMcpPath } from '../settings.bicep'
+
 @description('Same base name used for main.bicep.')
 param baseName string
 
 @description('APIM URL suffix for the API.')
-param apiPath string = 'products-api'
+param apiPath string = productsApiPath
 
 @description('APIM URL suffix for the MCP server.')
-param mcpPath string = 'products-mcp'
+param mcpPath string = productsMcpPath
 
-var apimName = 'apim-${baseName}'
-var functionAppName = 'func-${baseName}'
+var apimName = apimNameFor(baseName)
+var functionAppName = functionAppNameFor(baseName)
 
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
   name: apimName
@@ -35,7 +37,7 @@ resource functionKey 'Microsoft.ApiManagement/service/namedValues@2023-09-01-pre
 
 resource api 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' = {
   parent: apim
-  name: 'products-api'
+  name: productsApiName
   properties: {
     displayName: 'Products API'
     path: apiPath
@@ -86,7 +88,7 @@ resource mcpBackend 'Microsoft.ApiManagement/service/backends@2025-09-01-preview
 
 resource mcpApi 'Microsoft.ApiManagement/service/apis@2025-09-01-preview' = {
   parent: apim
-  name: 'products-mcp'
+  name: productsMcpApiName
   properties: {
     type: 'mcp'
     displayName: 'Products MCP'

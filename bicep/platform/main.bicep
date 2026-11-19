@@ -25,12 +25,14 @@ param apimSku string = 'StandardV2'
 @allowed(['eastus2', 'swedencentral'])
 param aiGatewayLocation string = 'eastus2'
 
-var apimName = 'apim-${baseName}'
-var aiGatewayName = 'aigw-${baseName}'
-var storageName = take('st${baseName}${uniqueString(resourceGroup().id)}', 24)
+import { apimNameFor, aiGatewayNameFor, logAnalyticsNameFor, appInsightsNameFor, vnetNameFor, storageNameFor } from '../settings.bicep'
+
+var apimName = apimNameFor(baseName)
+var aiGatewayName = aiGatewayNameFor(baseName)
+var storageName = storageNameFor(baseName, resourceGroup().id)
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
-  name: 'log-${baseName}'
+  name: logAnalyticsNameFor(baseName)
   location: location
   properties: {
     sku: { name: 'PerGB2018' }
@@ -39,7 +41,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 }
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
-  name: 'appi-${baseName}'
+  name: appInsightsNameFor(baseName)
   location: location
   kind: 'web'
   properties: {
@@ -68,7 +70,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
 }
 
 resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
-  name: 'vnet-${baseName}'
+  name: vnetNameFor(baseName)
   location: location
   properties: {
     addressSpace: { addressPrefixes: ['10.20.0.0/16'] }

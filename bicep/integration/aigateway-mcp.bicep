@@ -4,7 +4,9 @@
 // tools are published as <namespace>_<tool> (for example products_listProducts).
 targetScope = 'resourceGroup'
 
-@description('Same base name used for main.bicep.')
+import { aiGatewayNameFor, functionAppNameFor } from '../settings.bicep'
+
+@description('Same base name used for platform/main.bicep.')
 param baseName string
 
 @description('MCP server name; part of the endpoint URL and cannot be changed after creation.')
@@ -13,8 +15,8 @@ param serverName string = 'products'
 @description('Namespace prefix for the backend tools.')
 param namespace string = 'products'
 
-var aiGatewayName = 'aigw-${baseName}'
-var functionAppName = 'func-${baseName}'
+var aiGatewayName = aiGatewayNameFor(baseName)
+var functionAppName = functionAppNameFor(baseName)
 
 #disable-next-line BCP081
 resource gateway 'Microsoft.ApiManagement/aigateways@2026-11-01' existing = {
