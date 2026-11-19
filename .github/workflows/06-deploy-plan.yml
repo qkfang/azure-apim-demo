@@ -1,0 +1,36 @@
+name: 06-Deploy App Service plan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bicep/integration/plan.bicep'
+      - '.github/workflows/06-deploy-plan.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy plan.bicep
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy plan.bicep
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "plan-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/integration/plan.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" \
+            --query properties.outputs \
+            --output json

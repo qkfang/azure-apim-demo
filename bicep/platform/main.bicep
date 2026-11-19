@@ -1,6 +1,6 @@
-// Core infrastructure: API Management, Azure AI Gateway, Function App (+ plan, storage, App Insights).
-// The API / MCP server are published to APIM and the AI Gateway by api.bicep and aigateway-mcp.bicep
-// after the function code is deployed.
+// Platform infrastructure: API Management, Azure AI Gateway, monitoring, storage and network.
+// The App Service plan (integration/plan.bicep) and Function App (apps/functionapp.bicep) are deployed
+// afterwards by their own teams; they consume the storage, VNet and App Insights created here.
 targetScope = 'resourceGroup'
 
 @description('Short, globally-unique base name used to derive resource names (3-12 lowercase letters/digits).')
@@ -27,7 +27,6 @@ param aiGatewayLocation string = 'eastus2'
 
 var apimName = 'apim-${baseName}'
 var aiGatewayName = 'aigw-${baseName}'
-var functionAppName = 'func-${baseName}'
 var storageName = take('st${baseName}${uniqueString(resourceGroup().id)}', 24)
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -141,65 +140,6 @@ resource endpointDns 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@20
   }
 }]
 
-// Standard (dedicated) Linux plan. Consumption/Premium need a key-based Azure Files content share,
-// which is blocked when storage shared-key access is disabled.
-resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: 'plan-${baseName}'
-  location: location
-  kind: 'linux'
-  sku: {
-    name: 'S1'
-    tier: 'Standard'
-  }
-  properties: {
-    reserved: true
-  }
-}
-
-resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
-  name: functionAppName
-  location: location
-  kind: 'functionapp,linux'
-  identity: { type: 'SystemAssigned' }
-  properties: {
-    serverFarmId: plan.id
-    httpsOnly: true
-    virtualNetworkSubnetId: vnet.properties.subnets[0].id
-    siteConfig: {
-      linuxFxVersion: 'Node|20'
-      alwaysOn: true
-      vnetRouteAllEnabled: true
-      minTlsVersion: '1.2'
-      ftpsState: 'Disabled'
-      appSettings: [
-        { name: 'AzureWebJobsStorage__accountName', value: storage.name }
-        { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
-        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' }
-        { name: 'WEBSITE_NODE_DEFAULT_VERSION', value: '~20' }
-        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
-      ]
-    }
-  }
-  dependsOn: [endpointDns]
-}
-
-// Blob Data Owner, Queue Data Contributor, Table Data Contributor
-var storageRoleIds = [
-  'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
-  '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
-  '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
-]
-
-resource storageRoles 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for roleId in storageRoleIds: {
-  scope: storage
-  name: guid(storage.id, functionApp.id, roleId)
-  properties: {
-    principalId: functionApp.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleId)
-  }
-}]
-
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
   name: apimName
   location: location
@@ -214,7 +154,7 @@ resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
 }
 
 // Azure AI Gateway (preview): a separate resource type from APIM. The Function App's MCP endpoint
-// is registered on it as a tool server by aigateway-mcp.bicep (after the function code is deployed).
+// is registered on it as a tool server by integration/aigateway-mcp.bicep.
 #disable-next-line BCP081
 resource aiGateway 'Microsoft.ApiManagement/aigateways@2026-11-01' = {
   name: aiGatewayName
@@ -227,5 +167,3 @@ output apimName string = apim.name
 output aiGatewayName string = aiGateway.name
 output aiGatewayUrl string = 'https://${aiGateway.properties.frontend.defaultHostname}'
 output apimGatewayUrl string = apim.properties.gatewayUrl
-output functionAppName string = functionApp.name
-output functionAppHostName string = functionApp.properties.defaultHostName

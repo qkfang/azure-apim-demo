@@ -58,7 +58,7 @@ resource api 'Microsoft.ApiManagement/service/workspaces/apis@2024-05-01' = {
     subscriptionRequired: true
     serviceUrl: 'https://${functionApp.properties.defaultHostName}/api'
     format: 'swagger-json'
-    value: loadTextContent('../swagger/swagger.json')
+    value: loadTextContent('../../swagger/swagger.json')
   }
 }
 

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/functionapp/**'
+      - 'bicep/apps/functionapp.bicep'
       - '.github/workflows/02-deploy-functionapp.yml'
   pull_request:
     paths:
@@ -25,6 +26,29 @@ env:
   NODE_VERSION: '20.x'
 
 jobs:
+  infra:
+    name: Deploy functionapp.bicep
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy functionapp.bicep
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "func-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/apps/functionapp.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" \
+            --query properties.outputs \
+            --output json
+
   build:
     name: Build and test
     runs-on: ubuntu-latest
@@ -58,7 +82,7 @@ jobs:
 
   deploy:
     name: Deploy to Azure
-    needs: build
+    needs: [build, infra]
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     runs-on: ubuntu-latest
     environment: dev

@@ -3,10 +3,12 @@
 Azure API Management + CI/CD with GitHub Actions.
 
 ```
-bicep/        main.bicep (APIM, AI Gateway, Function App, plan, storage, App Insights), api.bicep (publishes REST API + MCP server to APIM), aigateway-mcp.bicep (registers MCP on the AI Gateway), workspace.bicep (APIM workspace + the same REST API)
+bicep/platform/     platform team: main.bicep (APIM, AI Gateway, storage, App Insights, VNet + private endpoints)
+bicep/apps/         apps team: functionapp.bicep (Function App), api.bicep (publishes REST API + MCP server to APIM)
+bicep/integration/  integration team: plan.bicep (App Service plan), access.bicep + apim-config.json (APIM products and subscriptions for clients), workspace.bicep (APIM workspace + the same REST API), aigateway-mcp.bicep (registers MCP on the AI Gateway)
 src/functionapp/  Node.js (v4 model) Azure Function App exposing a REST API
 swagger/swagger.json  OpenAPI (Swagger 2.0) definition imported into APIM
-.github/workflows/    01-deploy-infra, 02-deploy-functionapp, 03-deploy-api, 04-test-api
+.github/workflows/    01-deploy-infra, 02-deploy-functionapp, 03-deploy-api, 04-test-api, 05-deploy-integration, 06-deploy-plan
 tests/                integration tests for the deployed Function App and APIM endpoints
 ```
 
@@ -32,17 +34,20 @@ Run locally: `cd src/functionapp && npm ci && npm test`, then copy `local.settin
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `01-deploy-infra.yml` | changes to `bicep/main.*` | lint, what-if (PRs), deploy `main.bicep` |
-| `02-deploy-functionapp.yml` | changes to `src/functionapp/**` | test, zip, deploy to Function App (does not touch APIM) |
-| `03-deploy-api.yml` | changes to `swagger/**` / `api.bicep` / `aigateway-mcp.bicep` / `apim-config.json`, or manual | deploys `api.bicep`: imports `swagger.json` as an APIM API, publishes the MCP server, sets backend + function key policy, and creates the products and subscriptions from `bicep/apim-config.json`; deploys `aigateway-mcp.bicep` (MCP tool server on the AI Gateway); then calls `04-test-api.yml` |
+| `01-deploy-infra.yml` | changes to `bicep/platform/**` | lint, what-if (PRs), deploy `main.bicep` |
+| `02-deploy-functionapp.yml` | changes to `src/functionapp/**` / `bicep/apps/functionapp.bicep` | test, deploy `functionapp.bicep` (Function App), zip, deploy code (does not touch APIM) |
+| `03-deploy-api.yml` | changes to `swagger/**` / `bicep/apps/api.bicep`, or manual | deploys `api.bicep`: imports `swagger.json` as an APIM API, publishes the MCP server, and sets backend + function key policy; then calls `04-test-api.yml` |
+| `05-deploy-integration.yml` | changes to `swagger/**` / `bicep/integration/**` (except `plan.bicep`), or manual | deploys `access.bicep` (products and subscriptions from `bicep/integration/apim-config.json`), `workspace.bicep` (APIM workspace + API) and `aigateway-mcp.bicep` (MCP tool server on the AI Gateway); then calls `04-test-api.yml` |
+| `06-deploy-plan.yml` | changes to `bicep/integration/plan.bicep`, or manual | deploys `plan.bicep` (App Service plan used by the Function App) |
 | `04-test-api.yml` | changes to `tests/**`, daily schedule, manual, or called | looks up the function key and APIM subscription key, runs `tests/` against both endpoints |
 
-Order for a first deployment: **01 Deploy infrastructure → 02 Deploy Function App → 03 Publish API to APIM** (which also
-runs the tests). 03 needs the function code deployed so the function host key exists; run it manually after 02, or after
-changing `swagger/`, `bicep/api.bicep` or `bicep/apim-config.json` (those pushes trigger it automatically).
+Order for a first deployment: **01 Deploy infrastructure → 06 Deploy App Service plan → 02 Deploy Function App →
+03 Publish API to APIM → 05 Deploy integration** (both also run the tests; 03's tests need the subscriptions that 05 creates, so they only pass from the second run). 03 and 05 need the function code deployed
+so the function host key exists; run them manually after 02, or after changing `swagger/`, `bicep/apps/api.bicep` /
+(03) or `bicep/integration/` (05) (those pushes trigger them automatically).
 
 All workflows can also be started manually (**Actions → pick a workflow → Run workflow**). Manual inputs: `01` and `02`
-have `deploy` (uncheck for what-if / build-and-test only), and `03` has `run_tests`.
+have `deploy` (uncheck for what-if / build-and-test only), and `03` / `05` have `run_tests`.
 
 ## Integration tests
 
@@ -59,7 +64,7 @@ npm test
 
 ## APIM products and subscriptions
 
-Defined in `bicep/apim-config.json` and deployed by `03-deploy-api.yml` (edit the file, push to `main`):
+Defined in `bicep/integration/apim-config.json` and deployed by `05-deploy-integration.yml` (edit the file, push to `main`):
 
 - `products[]`: `name`, `displayName`, optional `description`, `state`, `subscriptionRequired`, `approvalRequired`,
   `subscriptionsLimit`. Every product exposes the Products API.
@@ -103,7 +108,7 @@ It is published in two places by `03-deploy-api.yml`:
 
 | Where | Resource | Endpoint | Auth |
 | --- | --- | --- | --- |
-| APIM | MCP server `products-mcp` (passthrough, `api.bicep`), added to every product | `https://apim-<BASE_NAME>.azure-api.net/products-mcp/mcp` | `Ocp-Apim-Subscription-Key` |
+| APIM | MCP server `products-mcp` (passthrough, `api.bicep`), added to every product by `access.bicep` | `https://apim-<BASE_NAME>.azure-api.net/products-mcp/mcp` | `Ocp-Apim-Subscription-Key` |
 | Azure AI Gateway (preview, `Microsoft.ApiManagement/aigateways`, created by `main.bicep` as `aigw-<BASE_NAME>`) | tool server `products` (`aigateway-mcp.bicep`) | `https://<gateway-host>/default/toolservers/products/mcp` | `Authorization: Bearer <runtime API key>` (`products-mcp-client`) |
 
 Both inject the Function host key (`x-functions-key`) towards the backend. The AI Gateway prefixes tool names with the
@@ -119,7 +124,7 @@ prompts for an APIM subscription key (for example `demo-default`), which VS Code
 
 ## APIM workspace
 
-`workspace.bicep` (deployed by `03-deploy-api.yml`) creates the workspace `products-team` and publishes the same Products API into it
+`workspace.bicep` (deployed by `05-deploy-integration.yml`) creates the workspace `products-team` and publishes the same Products API into it
 (imported from `swagger/swagger.json`): its own function-key named value, API policy, product `products-team-product` and
 subscription `products-team-tests`. On StandardV2 the workspace is served by the built-in gateway (`serveOn: workspaceAndDefault`).
 

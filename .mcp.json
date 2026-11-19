@@ -1,0 +1,14 @@
+{
+	"mcpServers": {
+		"products-mcp": {
+			"type": "http",
+			"url": "https://apim-apimdemoqf01.azure-api.net/products-mcp/mcp",
+			"tools": [
+				"*"
+			],
+			"headers": {
+				"Ocp-Apim-Subscription-Key": ""
+			}
+		}
+	}
+}

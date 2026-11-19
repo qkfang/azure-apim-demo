@@ -4,12 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'bicep/main.bicep'
-      - 'bicep/main.bicepparam'
+      - 'bicep/platform/**'
       - '.github/workflows/01-deploy-infra.yml'
   pull_request:
     paths:
-      - 'bicep/**'
+      - 'bicep/platform/**'
   workflow_dispatch:
     inputs:
       deploy:
@@ -37,10 +36,7 @@ jobs:
 
       - name: Lint Bicep
         run: |
-          az bicep build --file bicep/main.bicep --stdout > /dev/null
-          az bicep build --file bicep/api.bicep --stdout > /dev/null
-          az bicep build --file bicep/aigateway-mcp.bicep --stdout > /dev/null
-          az bicep build --file bicep/workspace.bicep --stdout > /dev/null
+          az bicep build --file bicep/platform/main.bicep --stdout > /dev/null
 
       - uses: azure/login@v2
         with:
@@ -53,7 +49,7 @@ jobs:
         run: |
           az deployment group what-if \
             --resource-group "$RESOURCE_GROUP" \
-            --parameters bicep/main.bicepparam
+            --parameters bicep/platform/main.bicepparam
 
   deploy:
     name: Deploy
@@ -75,7 +71,7 @@ jobs:
           az deployment group create \
             --name "infra-${{ github.run_number }}" \
             --resource-group "$RESOURCE_GROUP" \
-            --parameters bicep/main.bicepparam \
+            --parameters bicep/platform/main.bicepparam \
             --query properties.outputs \
             --output json | tee outputs.json
 
@@ -85,5 +81,4 @@ jobs:
             echo "### Infrastructure deployed"
             echo "- APIM gateway: $(jq -r .apimGatewayUrl.value outputs.json)"
             echo "- AI Gateway: $(jq -r .aiGatewayUrl.value outputs.json)"
-            echo "- Function App: $(jq -r .functionAppName.value outputs.json)"
           } >> "$GITHUB_STEP_SUMMARY"
