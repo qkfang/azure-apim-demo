@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'swagger/**'
-      - 'bicep/apps/api.bicep'
+      - 'bicep/apps/**'
       - '.github/workflows/03-deploy-api.yml'
   workflow_dispatch:
     inputs:
@@ -33,13 +33,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy api.bicep
+      - name: Deploy apps/main.bicep
         shell: bash
         run: |
           az deployment group create \
-            --name "api-${{ github.run_number }}" \
+            --name "apps-${{ github.run_number }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/apps/api.bicep \
+            --template-file bicep/apps/main.bicep \
             --parameters baseName="${{ vars.BASE_NAME }}" \
             --query properties.outputs \
             --output json > outputs.json

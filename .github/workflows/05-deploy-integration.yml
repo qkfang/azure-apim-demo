@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy client access (products, subscriptions), APIM workspace and MCP on AI Gateway
+    name: Deploy integration (plan, client access, APIM workspace, MCP on AI Gateway)
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -33,44 +33,22 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy access.bicep
+      - name: Deploy integration/main.bicep
         shell: bash
         run: |
           az deployment group create \
-            --name "access-${{ github.run_number }}" \
+            --name "integration-${{ github.run_number }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/access.bicep \
+            --template-file bicep/integration/main.bicep \
             --parameters baseName="${{ vars.BASE_NAME }}" \
             --query properties.outputs \
-            --output json
-
-      - name: Deploy workspace.bicep
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "workspace-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/workspace.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json > ws-outputs.json
-
-      - name: Deploy aigateway-mcp.bicep
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "aigw-mcp-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/aigateway-mcp.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json > aigw-outputs.json
+            --output json > outputs.json
 
       - name: Summary
         run: |
           {
-            echo "Workspace API base URL: $(jq -r .apiBaseUrl.value ws-outputs.json)"
-            echo "AI Gateway MCP endpoint: $(jq -r .mcpEndpoint.value aigw-outputs.json)"
+            echo "Workspace API base URL: $(jq -r .workspaceApiBaseUrl.value outputs.json)"
+            echo "AI Gateway MCP endpoint: $(jq -r .aiGatewayMcpEndpoint.value outputs.json)"
           } >> "$GITHUB_STEP_SUMMARY"
 
   test:

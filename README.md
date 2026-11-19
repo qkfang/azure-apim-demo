@@ -4,8 +4,8 @@ Azure API Management + CI/CD with GitHub Actions.
 
 ```
 bicep/platform/     platform team: main.bicep (APIM, AI Gateway, storage, App Insights, VNet + private endpoints)
-bicep/apps/         apps team: functionapp.bicep (Function App), api.bicep (publishes REST API + MCP server to APIM)
-bicep/integration/  integration team: plan.bicep (App Service plan), access.bicep + apim-config.json (APIM products and subscriptions for clients), workspace.bicep (APIM workspace + the same REST API), aigateway-mcp.bicep (registers MCP on the AI Gateway)
+bicep/apps/         apps team: main.bicep (entry point: functionapp.bicep + api.bicep), functionapp.bicep (Function App), api.bicep (publishes REST API + MCP server to APIM)
+bicep/integration/  integration team: main.bicep (entry point: all of the below), plan.bicep (App Service plan), access.bicep + apim-config.json (APIM products and subscriptions for clients), workspace.bicep (APIM workspace + the same REST API), aigateway-mcp.bicep (registers MCP on the AI Gateway)
 src/functionapp/  Node.js (v4 model) Azure Function App exposing a REST API
 swagger/swagger.json  OpenAPI (Swagger 2.0) definition imported into APIM
 .github/workflows/    01-deploy-infra, 02-deploy-functionapp, 03-deploy-api, 04-test-api, 05-deploy-integration, 06-deploy-plan
@@ -35,10 +35,10 @@ Run locally: `cd src/functionapp && npm ci && npm test`, then copy `local.settin
 | Workflow | Trigger | Does |
 | --- | --- | --- |
 | `01-deploy-infra.yml` | changes to `bicep/platform/**` | lint, what-if (PRs), deploy `main.bicep` |
-| `02-deploy-functionapp.yml` | changes to `src/functionapp/**` / `bicep/apps/functionapp.bicep` | test, deploy `functionapp.bicep` (Function App), zip, deploy code (does not touch APIM) |
-| `03-deploy-api.yml` | changes to `swagger/**` / `bicep/apps/api.bicep`, or manual | deploys `api.bicep`: imports `swagger.json` as an APIM API, publishes the MCP server, and sets backend + function key policy; then calls `04-test-api.yml` |
-| `05-deploy-integration.yml` | changes to `swagger/**` / `bicep/integration/**` (except `plan.bicep`), or manual | deploys `access.bicep` (products and subscriptions from `bicep/integration/apim-config.json`), `workspace.bicep` (APIM workspace + API) and `aigateway-mcp.bicep` (MCP tool server on the AI Gateway); then calls `04-test-api.yml` |
-| `06-deploy-plan.yml` | changes to `bicep/integration/plan.bicep`, or manual | deploys `plan.bicep` (App Service plan used by the Function App) |
+| `02-deploy-functionapp.yml` | changes to `src/functionapp/**` / `bicep/apps/functionapp.bicep` | test, deploy `apps/main.bicep` with `deployApi=false` (Function App only), zip, deploy code (does not touch APIM) |
+| `03-deploy-api.yml` | changes to `swagger/**` / `bicep/apps/**`, or manual | deploys `apps/main.bicep` (Function App + API): imports `swagger.json` as an APIM API, publishes the MCP server, and sets backend + function key policy; then calls `04-test-api.yml` |
+| `05-deploy-integration.yml` | changes to `swagger/**` / `bicep/integration/**`, or manual | deploys `integration/main.bicep`: `plan.bicep`, `access.bicep` (products and subscriptions from `bicep/integration/apim-config.json`), `workspace.bicep` (APIM workspace + API) and `aigateway-mcp.bicep` (MCP tool server on the AI Gateway); then calls `04-test-api.yml` |
+| `06-deploy-plan.yml` | manual, or changes to `bicep/integration/plan.bicep` | bootstrap: deploys `integration/main.bicep` with `deployAppIntegration=false` (only the App Service plan the Function App needs) |
 | `04-test-api.yml` | changes to `tests/**`, daily schedule, manual, or called | looks up the function key and APIM subscription key, runs `tests/` against both endpoints |
 
 Order for a first deployment: **01 Deploy infrastructure → 06 Deploy App Service plan → 02 Deploy Function App →

@@ -1,4 +1,4 @@
-name: 06-Deploy App Service plan
+name: 06-Deploy App Service plan (integration bootstrap)
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy plan.bicep
+    name: Deploy integration/main.bicep (plan only)
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -24,13 +24,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy plan.bicep
+      - name: Deploy integration/main.bicep (plan only)
         shell: bash
         run: |
           az deployment group create \
-            --name "plan-${{ github.run_number }}" \
+            --name "integration-plan-${{ github.run_number }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/plan.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
+            --template-file bicep/integration/main.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" deployAppIntegration=false \
             --query properties.outputs \
             --output json

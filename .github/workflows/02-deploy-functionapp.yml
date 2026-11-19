@@ -27,7 +27,7 @@ env:
 
 jobs:
   infra:
-    name: Deploy functionapp.bicep
+    name: Deploy apps/main.bicep (Function App only)
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     runs-on: ubuntu-latest
     environment: dev
@@ -38,14 +38,14 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy functionapp.bicep
+      - name: Deploy apps/main.bicep (Function App only)
         shell: bash
         run: |
           az deployment group create \
-            --name "func-${{ github.run_number }}" \
+            --name "apps-func-${{ github.run_number }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/apps/functionapp.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
+            --template-file bicep/apps/main.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" deployApi=false \
             --query properties.outputs \
             --output json
 
