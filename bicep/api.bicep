@@ -72,6 +72,18 @@ resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-09-01-pre
 
 // The same Products operations as an MCP server (passthrough to the Function App's /api/mcp endpoint).
 // MCP servers need an APIM tier that supports them (not Consumption) and API version 2025-09-01-preview or later.
+// A passthrough ("existing MCP server") needs a backend entity linked via backendId; with only serviceUrl,
+// APIM treats the API as a plain API and serves an empty tool list itself.
+resource mcpBackend 'Microsoft.ApiManagement/service/backends@2025-09-01-preview' = {
+  parent: apim
+  name: 'products-mcp-backend'
+  properties: {
+    description: 'Function App hosting the MCP endpoint'
+    url: 'https://${functionApp.properties.defaultHostName}/api'
+    protocol: 'http'
+  }
+}
+
 resource mcpApi 'Microsoft.ApiManagement/service/apis@2025-09-01-preview' = {
   parent: apim
   name: 'products-mcp'
@@ -82,12 +94,16 @@ resource mcpApi 'Microsoft.ApiManagement/service/apis@2025-09-01-preview' = {
     path: mcpPath
     protocols: ['https']
     subscriptionRequired: true
-    serviceUrl: 'https://${functionApp.properties.defaultHostName}/api'
+    // Not yet in the published Bicep types, but required for passthrough MCP servers.
+    #disable-next-line BCP037
+    backendId: mcpBackend.name
     mcpProperties: {
       transportType: 'streamable'
-      endpoints: [
-        { name: 'message', uriTemplate: '/mcp' }
-      ]
+      // The service expects a dictionary keyed by endpoint name (the published Bicep type says array).
+      #disable-next-line BCP036
+      endpoints: {
+        mcp: { uriTemplate: '/mcp' }
+      }
     }
   }
 }
