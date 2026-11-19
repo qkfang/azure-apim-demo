@@ -1,6 +1,6 @@
 # azure-apim-demo
 
-Demo of Azure API Management + CI/CD with GitHub Actions.
+Azure API Management + CI/CD with GitHub Actions.
 
 ```
 bicep/        main.bicep (APIM, AI Gateway, Function App, plan, storage, App Insights), api.bicep (publishes REST API + MCP server to APIM), aigateway-mcp.bicep (registers MCP on the AI Gateway)
@@ -21,7 +21,7 @@ tests/                integration tests for the deployed Function App and APIM e
 | PUT | `/products/{id}` | Update product |
 | DELETE | `/products/{id}` | Delete product |
 
-Data is held in memory (demo only). Functions use `authLevel: function`; APIM injects the host key
+Data is held in memory (in-memory only). Functions use `authLevel: function`; APIM injects the host key
 (`x-functions-key`) via a secret named value, so callers only need an APIM subscription key
 (`Ocp-Apim-Subscription-Key`).
 
@@ -53,7 +53,7 @@ their URL isn't set.
 ```
 cd tests
 $env:FUNCTION_BASE_URL = "https://func-<BASE_NAME>.azurewebsites.net/api"; $env:FUNCTION_KEY = "<function key>"
-$env:APIM_BASE_URL = "https://apim-<BASE_NAME>.azure-api.net/demo";       $env:APIM_SUBSCRIPTION_KEY = "<apim key>"
+$env:APIM_BASE_URL = "https://apim-<BASE_NAME>.azure-api.net/products-api";       $env:APIM_SUBSCRIPTION_KEY = "<apim key>"
 npm test
 ```
 
@@ -81,7 +81,7 @@ the repo; read them from the portal or `az rest ... /subscriptions/<name>/listSe
 4. Run the workflows in the order above. Then create an APIM subscription on the **Demo** product and call:
 
 ```
-curl -H "Ocp-Apim-Subscription-Key: <key>" https://apim-<BASE_NAME>.azure-api.net/demo/products
+curl -H "Ocp-Apim-Subscription-Key: <key>" https://apim-<BASE_NAME>.azure-api.net/products-api/products
 ```
 
 The Function App runs on a standard (S1) Linux plan with identity-based storage (no storage keys). Storage public
@@ -102,13 +102,13 @@ It is published in two places by `03-deploy-api.yml`:
 
 | Where | Resource | Endpoint | Auth |
 | --- | --- | --- | --- |
-| APIM | MCP server `demo-products-mcp` (passthrough, `api.bicep`), added to every product | `https://apim-<BASE_NAME>.azure-api.net/demo-mcp/mcp` | `Ocp-Apim-Subscription-Key` |
-| Azure AI Gateway (preview, `Microsoft.ApiManagement/aigateways`, created by `main.bicep` as `aigw-<BASE_NAME>`) | tool server `products` (`aigateway-mcp.bicep`) | `https://<gateway-host>/default/toolservers/products/mcp` | `Authorization: Bearer <runtime API key>` (`demo-mcp-client`) |
+| APIM | MCP server `products-mcp` (passthrough, `api.bicep`), added to every product | `https://apim-<BASE_NAME>.azure-api.net/products-mcp/mcp` | `Ocp-Apim-Subscription-Key` |
+| Azure AI Gateway (preview, `Microsoft.ApiManagement/aigateways`, created by `main.bicep` as `aigw-<BASE_NAME>`) | tool server `products` (`aigateway-mcp.bicep`) | `https://<gateway-host>/default/toolservers/products/mcp` | `Authorization: Bearer <runtime API key>` (`products-mcp-client`) |
 
 Both inject the Function host key (`x-functions-key`) towards the backend. The AI Gateway prefixes tool names with the
 namespace (`products_listProducts`). The gateway is created in `aiGatewayLocation` (`eastus2` or `swedencentral` during
 preview). Get the runtime key with
-`az aigateway api-key list-secrets --gateway-name aigw-<BASE_NAME> --name demo-mcp-client --query primaryKey -o tsv`.
+`az aigateway api-key list-secrets --gateway-name aigw-<BASE_NAME> --name products-mcp-client --query primaryKey -o tsv`.
 
 `tests/mcp.test.js` runs the same MCP scenario against the Function App, APIM (`APIM_MCP_URL`) and the AI Gateway
 (`AI_GATEWAY_MCP_URL`, `AI_GATEWAY_API_KEY`); `04-test-api.yml` sets these automatically.

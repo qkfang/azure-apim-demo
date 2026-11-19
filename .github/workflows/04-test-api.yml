@@ -49,7 +49,7 @@ jobs:
           AIGW_HOST=$(az rest --method get --url "https://management.azure.com$AIGW_ID?api-version=2026-11-01" \
             --query properties.frontend.defaultHostname -o tsv)
           AIGW_KEY=$(az rest --method post \
-            --url "https://management.azure.com$AIGW_ID/apiKeys/demo-mcp-client/listSecrets?api-version=2026-11-01" \
+            --url "https://management.azure.com$AIGW_ID/apiKeys/products-mcp-client/listSecrets?api-version=2026-11-01" \
             --query primaryKey -o tsv)
           echo "::add-mask::$FUNC_KEY"
           echo "::add-mask::$APIM_KEY"
@@ -57,9 +57,9 @@ jobs:
           {
             echo "FUNCTION_BASE_URL=https://$FUNC_HOST/api"
             echo "FUNCTION_KEY=$FUNC_KEY"
-            echo "APIM_BASE_URL=$APIM_URL/demo"
+            echo "APIM_BASE_URL=$APIM_URL/products-api"
             echo "APIM_SUBSCRIPTION_KEY=$APIM_KEY"
-            echo "APIM_MCP_URL=$APIM_URL/demo-mcp/mcp"
+            echo "APIM_MCP_URL=$APIM_URL/products-mcp/mcp"
             echo "AI_GATEWAY_MCP_URL=https://$AIGW_HOST/default/toolservers/products/mcp"
             echo "AI_GATEWAY_API_KEY=$AIGW_KEY"
           } >> "$GITHUB_ENV"

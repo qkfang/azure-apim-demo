@@ -1,6 +1,6 @@
 // Integration tests for the MCP endpoint (Streamable HTTP). Configure with environment variables:
 //   FUNCTION_BASE_URL / FUNCTION_KEY       Function App REST base URL (MCP is at <base>/mcp) and host key
-//   APIM_MCP_URL / APIM_SUBSCRIPTION_KEY   e.g. https://apim-<base>.azure-api.net/demo-mcp/mcp
+//   APIM_MCP_URL / APIM_SUBSCRIPTION_KEY   e.g. https://apim-<base>.azure-api.net/products-mcp/mcp
 //   AI_GATEWAY_MCP_URL / AI_GATEWAY_API_KEY e.g. https://<host>/default/toolservers/products/mcp
 // A suite is skipped when its URL is not set. The gateways may prefix tool names (<namespace>_<tool>).
 const { describe, test } = require('node:test');

@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Demo Products API",
+    "title": "Products API",
     "description": "REST API implemented by an Azure Function App and published through Azure API Management.",
     "version": "1.0"
   },

@@ -1,7 +1,7 @@
 // Integration tests against the deployed API. Configure with environment variables:
 //   FUNCTION_BASE_URL     e.g. https://func-<base>.azurewebsites.net/api  (or http://localhost:7071/api)
 //   FUNCTION_KEY          function/host key (omit for local `func start`)
-//   APIM_BASE_URL         e.g. https://apim-<base>.azure-api.net/demo
+//   APIM_BASE_URL         e.g. https://apim-<base>.azure-api.net/products-api
 //   APIM_SUBSCRIPTION_KEY APIM subscription key for the Demo product
 // A suite is skipped when its base URL is not set.
 const { describe, test } = require('node:test');

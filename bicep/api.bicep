@@ -6,10 +6,10 @@ targetScope = 'resourceGroup'
 param baseName string
 
 @description('APIM URL suffix for the API.')
-param apiPath string = 'demo'
+param apiPath string = 'products-api'
 
 @description('APIM URL suffix for the MCP server.')
-param mcpPath string = 'demo-mcp'
+param mcpPath string = 'products-mcp'
 
 var apimName = 'apim-${baseName}'
 var functionAppName = 'func-${baseName}'
@@ -35,9 +35,9 @@ resource functionKey 'Microsoft.ApiManagement/service/namedValues@2023-09-01-pre
 
 resource api 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' = {
   parent: apim
-  name: 'demo-products-api'
+  name: 'products-api'
   properties: {
-    displayName: 'Demo Products API'
+    displayName: 'Products API'
     path: apiPath
     protocols: ['https']
     subscriptionRequired: true
@@ -74,10 +74,10 @@ resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-09-01-pre
 // MCP servers need an APIM tier that supports them (not Consumption) and API version 2025-09-01-preview or later.
 resource mcpApi 'Microsoft.ApiManagement/service/apis@2025-09-01-preview' = {
   parent: apim
-  name: 'demo-products-mcp'
+  name: 'products-mcp'
   properties: {
     type: 'mcp'
-    displayName: 'Demo Products MCP'
+    displayName: 'Products MCP'
     description: 'MCP server exposing the Products operations as tools.'
     path: mcpPath
     protocols: ['https']

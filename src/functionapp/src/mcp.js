@@ -2,7 +2,7 @@
 // operations as the REST API. Transport-agnostic: handleMessage takes one JSON-RPC message.
 const store = require('./store');
 
-const SERVER_INFO = { name: 'apim-demo-products', version: '1.0.0' };
+const SERVER_INFO = { name: 'products', version: '1.0.0' };
 const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
 const idSchema = { type: 'integer', description: 'Product id' };

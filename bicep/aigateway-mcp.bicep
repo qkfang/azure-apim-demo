@@ -36,7 +36,7 @@ resource toolServer 'Microsoft.ApiManagement/aigateways/workspaces/toolServers@2
   parent: workspace
   name: serverName
   properties: {
-    displayName: 'Demo Products MCP'
+    displayName: 'Products MCP'
     description: 'Products operations (health, list, get, create, update, delete) from the Function App.'
     toolServerType: 'mcp'
     endpoints: [
@@ -68,9 +68,9 @@ resource toolServer 'Microsoft.ApiManagement/aigateways/workspaces/toolServers@2
 #disable-next-line BCP081
 resource apiKey 'Microsoft.ApiManagement/aigateways/apiKeys@2026-11-01' = {
   parent: gateway
-  name: 'demo-mcp-client'
+  name: 'products-mcp-client'
   properties: {
-    displayName: 'Demo MCP client'
+    displayName: 'Products MCP client'
   }
 }
 

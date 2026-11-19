@@ -3,7 +3,7 @@
     {
       "name": "demo",
       "displayName": "Demo",
-      "description": "Demo product exposing the Products API.",
+      "description": "Product exposing the Products API and MCP server.",
       "state": "published",
       "subscriptionRequired": true,
       "approvalRequired": false
