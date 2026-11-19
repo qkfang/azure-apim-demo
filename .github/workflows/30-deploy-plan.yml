@@ -7,31 +7,31 @@ on:
       - 'bicep/integration/plan.bicep'
       - 'bicep/settings.bicep'
       - '.github/workflows/30-deploy-plan.yml'
+      - '.github/workflows/reusable-plan.yml'
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
 
+# dev -> uat -> prd; uat and prd wait for the approval configured on the GitHub environments of the same name.
 jobs:
-  deploy:
-    name: Deploy plan.bicep
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
+  dev:
+    uses: ./.github/workflows/reusable-plan.yml
+    secrets: inherit
+    with:
+      env_name: dev
 
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+  uat:
+    needs: dev
+    uses: ./.github/workflows/reusable-plan.yml
+    secrets: inherit
+    with:
+      env_name: uat
 
-      - name: Deploy plan.bicep
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "plan-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/plan.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json
+  prd:
+    needs: uat
+    uses: ./.github/workflows/reusable-plan.yml
+    secrets: inherit
+    with:
+      env_name: prd

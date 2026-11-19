@@ -9,6 +9,7 @@ on:
       - '!bicep/integration/main.bicep'
       - 'bicep/settings.bicep'
       - '.github/workflows/20-deploy-integration.yml'
+      - '.github/workflows/reusable-integration.yml'
   workflow_dispatch:
     inputs:
       run_tests:
@@ -20,59 +21,27 @@ permissions:
   id-token: write
   contents: read
 
+# dev -> uat -> prd; uat and prd wait for the approval configured on the GitHub environments of the same name.
 jobs:
-  deploy:
-    name: Deploy access, workspace and AI Gateway MCP
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
+  dev:
+    uses: ./.github/workflows/reusable-integration.yml
+    secrets: inherit
+    with:
+      env_name: dev
+      run_tests: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
 
-      - name: Validate swagger is valid JSON
-        run: jq empty swagger/swagger.json
+  uat:
+    needs: dev
+    uses: ./.github/workflows/reusable-integration.yml
+    secrets: inherit
+    with:
+      env_name: uat
+      run_tests: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
 
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # These need the apps team's API and function code (workflows 31 and 32) and the plan from workflow 30.
-      - name: Deploy access.bicep (products and subscriptions)
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "access-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/access.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json
-
-      - name: Deploy workspace.bicep
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "workspace-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/workspace.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json > ws-outputs.json
-
-      - name: Deploy aigateway-mcp.bicep
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "aigw-mcp-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/aigateway-mcp.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json > aigw-outputs.json
-
-      - name: Summary
-        run: |
-          {
-            echo "Workspace API base URL: $(jq -r .apiBaseUrl.value ws-outputs.json)"
-            echo "AI Gateway MCP endpoint: $(jq -r .mcpEndpoint.value aigw-outputs.json)"
-          } >> "$GITHUB_STEP_SUMMARY"
-
+  prd:
+    needs: uat
+    uses: ./.github/workflows/reusable-integration.yml
+    secrets: inherit
+    with:
+      env_name: prd
+      run_tests: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}

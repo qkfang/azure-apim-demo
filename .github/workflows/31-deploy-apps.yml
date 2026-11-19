@@ -8,6 +8,7 @@ on:
       - 'bicep/apps/functionapp.bicep'
       - 'bicep/settings.bicep'
       - '.github/workflows/31-deploy-apps.yml'
+      - '.github/workflows/reusable-apps.yml'
   pull_request:
     paths:
       - 'src/functionapp/**'
@@ -26,6 +27,8 @@ env:
   APP_DIR: src/functionapp
   NODE_VERSION: '20.x'
 
+# Build once, then dev -> uat -> prd; uat and prd wait for the approval configured on the GitHub environments
+# of the same name. The same package is deployed to every environment.
 jobs:
   build:
     name: Build and test
@@ -58,38 +61,24 @@ jobs:
           name: functionapp
           path: functionapp.zip
 
-  function-app:
-    name: Deploy Function App (infra + code)
+  dev:
     needs: build
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
+    uses: ./.github/workflows/reusable-apps.yml
+    secrets: inherit
+    with:
+      env_name: dev
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: functionapp
+  uat:
+    needs: dev
+    uses: ./.github/workflows/reusable-apps.yml
+    secrets: inherit
+    with:
+      env_name: uat
 
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # The API needs the function host key, which only exists once the code is deployed, so the API is
-      # published separately by workflow 32.
-      - name: Deploy functionapp.bicep
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "func-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/apps/functionapp.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json
-
-      - name: Deploy zip package
-        uses: Azure/functions-action@v1
-        with:
-          app-name: func-${{ vars.BASE_NAME }}
-          package: functionapp.zip
+  prd:
+    needs: uat
+    uses: ./.github/workflows/reusable-apps.yml
+    secrets: inherit
+    with:
+      env_name: prd

@@ -8,6 +8,7 @@ on:
       - 'bicep/apps/api.bicep'
       - 'bicep/settings.bicep'
       - '.github/workflows/32-deploy-api.yml'
+      - '.github/workflows/reusable-api.yml'
   workflow_dispatch:
     inputs:
       run_tests:
@@ -19,36 +20,27 @@ permissions:
   id-token: write
   contents: read
 
+# dev -> uat -> prd; uat and prd wait for the approval configured on the GitHub environments of the same name.
 jobs:
-  api:
-    name: Publish API and MCP server to APIM
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
+  dev:
+    uses: ./.github/workflows/reusable-api.yml
+    secrets: inherit
+    with:
+      env_name: dev
+      run_tests: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
 
-      - name: Validate swagger is valid JSON
-        run: jq empty swagger/swagger.json
+  uat:
+    needs: dev
+    uses: ./.github/workflows/reusable-api.yml
+    secrets: inherit
+    with:
+      env_name: uat
+      run_tests: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
 
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # Needs the function code from workflow 31 (the function host key must exist).
-      - name: Deploy api.bicep
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "api-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/apps/api.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json > outputs.json
-
-      - name: Summary
-        run: |
-          {
-            echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)"
-            echo "APIM MCP endpoint: $(jq -r .mcpEndpoint.value outputs.json)"
-          } >> "$GITHUB_STEP_SUMMARY"
+  prd:
+    needs: uat
+    uses: ./.github/workflows/reusable-api.yml
+    secrets: inherit
+    with:
+      env_name: prd
+      run_tests: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
