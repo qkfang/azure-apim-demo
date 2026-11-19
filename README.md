@@ -163,3 +163,8 @@ Workspace APIs only accept subscription keys created **inside the workspace** (s
 ```
 az rest --method post --url "https://management.azure.com/subscriptions/<SUB_ID>/resourceGroups/<RG>/providers/Microsoft.ApiManagement/service/apim-<BASE_NAME>-<env>/workspaces/products-team/subscriptions/products-team-tests/listSecrets?api-version=2024-05-01" --query primaryKey -o tsv
 ```
+
+The portal's **Test** tab currently never fills in a key for workspace APIs (it doesn't fetch the built-in all-access key
+inside a workspace), so it always shows *"We couldn't automatically retrieve the subscription key, because you don't have
+"write" permissions to the subscriptions scope"*, even for Owners. Paste the key above into the `Ocp-Apim-Subscription-Key`
+header row; the *Subscription key* box under *Apply product scope* isn't sent for workspace APIs.
