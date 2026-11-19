@@ -16,7 +16,6 @@ permissions:
 
 jobs:
   api:
-    name: Publish (${{ inputs.env_name }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.env_name }}
     steps:

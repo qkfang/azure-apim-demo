@@ -13,7 +13,6 @@ permissions:
 
 jobs:
   function-app:
-    name: Deploy (${{ inputs.env_name }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.env_name }}
     steps:
