@@ -14,11 +14,6 @@ on:
         description: 'Run the integration tests after publishing'
         type: boolean
         default: true
-  workflow_call:
-    inputs:
-      run_tests:
-        type: boolean
-        default: true
 
 permissions:
   id-token: write

@@ -33,14 +33,16 @@ Run locally: `cd src/functionapp && npm ci && npm test`, then copy `local.settin
 | Workflow | Trigger | Does |
 | --- | --- | --- |
 | `01-deploy-infra.yml` | changes to `bicep/main.*` | lint, what-if (PRs), deploy `main.bicep` |
-| `02-deploy-functionapp.yml` | changes to `src/functionapp/**` | test, zip, deploy to Function App, then calls `03-deploy-api.yml` |
-| `03-deploy-api.yml` | changes to `swagger/**` / `api.bicep` / `apim-config.json`, or called | deploys `api.bicep`: imports `swagger.json` as an APIM API, sets backend + function key policy, and creates the products and subscriptions from `bicep/apim-config.json`; then calls `04-test-api.yml` |
+| `02-deploy-functionapp.yml` | changes to `src/functionapp/**` | test, zip, deploy to Function App (does not touch APIM) |
+| `03-deploy-api.yml` | changes to `swagger/**` / `api.bicep` / `apim-config.json`, or manual | deploys `api.bicep`: imports `swagger.json` as an APIM API, sets backend + function key policy, and creates the products and subscriptions from `bicep/apim-config.json`; then calls `04-test-api.yml` |
 | `04-test-api.yml` | changes to `tests/**`, daily schedule, manual, or called | looks up the function key and APIM subscription key, runs `tests/` against both endpoints |
 
-Order for a first deployment: **Deploy infrastructure → Deploy Function App** (which also publishes the API and runs the tests).
+Order for a first deployment: **01 Deploy infrastructure → 02 Deploy Function App → 03 Publish API to APIM** (which also
+runs the tests). 03 needs the function code deployed so the function host key exists; run it manually after 02, or after
+changing `swagger/`, `bicep/api.bicep` or `bicep/apim-config.json` (those pushes trigger it automatically).
 
 All workflows can also be started manually (**Actions → pick a workflow → Run workflow**). Manual inputs: `01` and `02`
-have `deploy` (uncheck for what-if / build-and-test only), `02` has `publish_api`, and `03` has `run_tests`.
+have `deploy` (uncheck for what-if / build-and-test only), and `03` has `run_tests`.
 
 ## Integration tests
 

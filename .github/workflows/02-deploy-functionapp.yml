@@ -15,10 +15,6 @@ on:
         description: 'Deploy to Azure (uncheck to only build and test)'
         type: boolean
         default: true
-      publish_api:
-        description: 'Publish the API to APIM and run the integration tests after deploying'
-        type: boolean
-        default: true
 
 permissions:
   id-token: write
@@ -80,10 +76,3 @@ jobs:
         with:
           app-name: func-${{ vars.BASE_NAME }}
           package: functionapp.zip
-
-  publish-api:
-    name: Publish API to APIM
-    needs: deploy
-    if: github.event_name == 'push' || inputs.publish_api
-    uses: ./.github/workflows/03-deploy-api.yml
-    secrets: inherit
