@@ -17,13 +17,14 @@ permissions:
 
 jobs:
   test:
-    name: Integration tests (Function App + APIM)
+    name: Integration tests (Function App + APIM + AI Gateway)
     runs-on: ubuntu-latest
     environment: dev
     env:
       RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       FUNC_NAME: func-${{ vars.BASE_NAME }}
       APIM_NAME: apim-${{ vars.BASE_NAME }}
+      AIGW_NAME: aigw-${{ vars.BASE_NAME }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,13 +45,23 @@ jobs:
           APIM_KEY=$(az rest --method post \
             --url "https://management.azure.com/subscriptions/$SUB_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ApiManagement/service/$APIM_NAME/subscriptions/demo-tests/listSecrets?api-version=2023-09-01-preview" \
             --query primaryKey -o tsv)
+          AIGW_ID="/subscriptions/$SUB_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ApiManagement/aigateways/$AIGW_NAME"
+          AIGW_HOST=$(az rest --method get --url "https://management.azure.com$AIGW_ID?api-version=2026-11-01" \
+            --query properties.frontend.defaultHostname -o tsv)
+          AIGW_KEY=$(az rest --method post \
+            --url "https://management.azure.com$AIGW_ID/apiKeys/demo-mcp-client/listSecrets?api-version=2026-11-01" \
+            --query primaryKey -o tsv)
           echo "::add-mask::$FUNC_KEY"
           echo "::add-mask::$APIM_KEY"
+          echo "::add-mask::$AIGW_KEY"
           {
             echo "FUNCTION_BASE_URL=https://$FUNC_HOST/api"
             echo "FUNCTION_KEY=$FUNC_KEY"
             echo "APIM_BASE_URL=$APIM_URL/demo"
             echo "APIM_SUBSCRIPTION_KEY=$APIM_KEY"
+            echo "APIM_MCP_URL=$APIM_URL/demo-mcp/mcp"
+            echo "AI_GATEWAY_MCP_URL=https://$AIGW_HOST/default/toolservers/products/mcp"
+            echo "AI_GATEWAY_API_KEY=$AIGW_KEY"
           } >> "$GITHUB_ENV"
 
       - name: Run integration tests

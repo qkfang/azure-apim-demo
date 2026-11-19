@@ -39,6 +39,7 @@ jobs:
         run: |
           az bicep build --file bicep/main.bicep --stdout > /dev/null
           az bicep build --file bicep/api.bicep --stdout > /dev/null
+          az bicep build --file bicep/aigateway-mcp.bicep --stdout > /dev/null
 
       - uses: azure/login@v2
         with:
@@ -81,5 +82,6 @@ jobs:
           {
             echo "### Infrastructure deployed"
             echo "- APIM gateway: $(jq -r .apimGatewayUrl.value outputs.json)"
+            echo "- AI Gateway: $(jq -r .aiGatewayUrl.value outputs.json)"
             echo "- Function App: $(jq -r .functionAppName.value outputs.json)"
           } >> "$GITHUB_STEP_SUMMARY"

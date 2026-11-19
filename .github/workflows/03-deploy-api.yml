@@ -6,6 +6,7 @@ on:
     paths:
       - 'swagger/**'
       - 'bicep/api.bicep'
+      - 'bicep/aigateway-mcp.bicep'
       - 'bicep/apim-config.json'
       - '.github/workflows/03-deploy-api.yml'
   workflow_dispatch:
@@ -21,7 +22,7 @@ permissions:
 
 jobs:
   publish:
-    name: Import swagger into APIM
+    name: Import swagger and MCP server into APIM, register MCP on AI Gateway
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -44,9 +45,23 @@ jobs:
             --query properties.outputs \
             --output json | tee outputs.json
 
+      - name: Deploy aigateway-mcp.bicep
+        run: |
+          az deployment group create \
+            --name "aigw-mcp-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/aigateway-mcp.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" \
+            --query properties.outputs \
+            --output json | tee aigw-outputs.json
+
       - name: Summary
         run: |
-          echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)"
+            echo "APIM MCP endpoint: $(jq -r .mcpEndpoint.value outputs.json)"
+            echo "AI Gateway MCP endpoint: $(jq -r .mcpEndpoint.value aigw-outputs.json)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   test:
     name: Test deployed API

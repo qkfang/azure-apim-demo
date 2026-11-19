@@ -1,4 +1,4 @@
-// Publishes the Function App's REST API into the existing APIM instance, using swagger/swagger.json.
+// Publishes the Function App's REST API and MCP server into the existing APIM instance, using swagger/swagger.json.
 // Run after main.bicep and after the function code has been deployed (the host key must exist).
 targetScope = 'resourceGroup'
 
@@ -7,6 +7,9 @@ param baseName string
 
 @description('APIM URL suffix for the API.')
 param apiPath string = 'demo'
+
+@description('APIM URL suffix for the MCP server.')
+param mcpPath string = 'demo-mcp'
 
 var apimName = 'apim-${baseName}'
 var functionAppName = 'func-${baseName}'
@@ -67,6 +70,52 @@ resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-09-01-pre
   }
 }
 
+// The same Products operations as an MCP server (passthrough to the Function App's /api/mcp endpoint).
+// MCP servers need an APIM tier that supports them (not Consumption) and API version 2025-09-01-preview or later.
+resource mcpApi 'Microsoft.ApiManagement/service/apis@2025-09-01-preview' = {
+  parent: apim
+  name: 'demo-products-mcp'
+  properties: {
+    type: 'mcp'
+    displayName: 'Demo Products MCP'
+    description: 'MCP server exposing the Products operations as tools.'
+    path: mcpPath
+    protocols: ['https']
+    subscriptionRequired: true
+    serviceUrl: 'https://${functionApp.properties.defaultHostName}/api'
+    mcpProperties: {
+      transportType: 'streamable'
+      endpoints: [
+        { name: 'message', uriTemplate: '/mcp' }
+      ]
+    }
+  }
+}
+
+// Do not read the response body in MCP policies: it forces buffering and breaks streaming.
+resource mcpPolicy 'Microsoft.ApiManagement/service/apis/policies@2025-09-01-preview' = {
+  parent: mcpApi
+  name: 'policy'
+  dependsOn: [functionKey]
+  properties: {
+    format: 'xml'
+    value: '''
+<policies>
+  <inbound>
+    <base />
+    <rate-limit calls="60" renewal-period="60" />
+    <set-header name="x-functions-key" exists-action="override">
+      <value>{{function-host-key}}</value>
+    </set-header>
+  </inbound>
+  <backend><base /></backend>
+  <outbound><base /></outbound>
+  <on-error><base /></on-error>
+</policies>
+'''
+  }
+}
+
 // Products and subscriptions are defined in apim-config.json; every product exposes the API above.
 var config = loadJsonContent('apim-config.json')
 
@@ -88,6 +137,11 @@ resource productApis 'Microsoft.ApiManagement/service/products/apis@2023-09-01-p
   name: api.name
 }]
 
+resource productMcpApis 'Microsoft.ApiManagement/service/products/apis@2025-09-01-preview' = [for (p, i) in config.products: {
+  parent: products[i]
+  name: mcpApi.name
+}]
+
 // 'demo-tests' is used by the integration tests in tests/ (its key is fetched at runtime by the workflow).
 resource subscriptions 'Microsoft.ApiManagement/service/subscriptions@2023-09-01-preview' = [for s in config.subscriptions: {
   parent: apim
@@ -101,5 +155,6 @@ resource subscriptions 'Microsoft.ApiManagement/service/subscriptions@2023-09-01
 }]
 
 output apiBaseUrl string = '${apim.properties.gatewayUrl}/${apiPath}'
+output mcpEndpoint string = '${apim.properties.gatewayUrl}/${mcpPath}/mcp'
 output products array = [for p in config.products: p.name]
 output subscriptions array = [for s in config.subscriptions: s.name]
