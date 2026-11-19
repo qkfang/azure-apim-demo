@@ -41,7 +41,8 @@ jobs:
             --output json | tee outputs.json
 
       - name: Summary
-        run: echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)" >> "$GITHUB_STEP_SUMMARY"
 
   test:
     name: Test deployed API
