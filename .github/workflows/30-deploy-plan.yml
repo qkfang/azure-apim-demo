@@ -1,4 +1,4 @@
-name: 30-Deploy App Service plan
+name: 30-Deploy app service plan
 
 on:
   push:

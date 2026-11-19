@@ -1,4 +1,4 @@
-name: 32-Deploy API
+name: 32-Deploy api
 
 on:
   push:
