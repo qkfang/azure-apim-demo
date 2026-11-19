@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - 'bicep/platform/**'
+      - 'bicep/settings.bicep'
       - '.github/workflows/10-deploy-platform.yml'
   pull_request:
     paths:
       - 'bicep/platform/**'
+      - 'bicep/settings.bicep'
   workflow_dispatch:
     inputs:
       deploy:

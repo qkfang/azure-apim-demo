@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'bicep/integration/plan.bicep'
+      - 'bicep/settings.bicep'
       - '.github/workflows/30-deploy-plan.yml'
   workflow_dispatch:
 
@@ -14,7 +15,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy integration/main.bicep (plan only)
+    name: Deploy plan.bicep
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -24,14 +25,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # The rest of integration/main.bicep (client access, workspace, AI Gateway MCP) needs the API from workflow 32.
-      - name: Deploy integration/main.bicep (plan only)
+      - name: Deploy plan.bicep
         shell: bash
         run: |
           az deployment group create \
             --name "plan-${{ github.run_number }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/integration/main.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" deployAppIntegration=false \
+            --template-file bicep/integration/plan.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" \
             --query properties.outputs \
             --output json

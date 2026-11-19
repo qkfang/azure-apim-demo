@@ -3,9 +3,10 @@
 Azure API Management + CI/CD with GitHub Actions.
 
 ```
+bicep/settings.bicep   shared settings: resource naming and cross-team names (imported by every template)
 bicep/platform/     platform team: main.bicep (APIM, AI Gateway, storage, App Insights, VNet + private endpoints)
-bicep/apps/         apps team: main.bicep (entry point: functionapp.bicep + api.bicep), functionapp.bicep (Function App), api.bicep (publishes REST API + MCP server to APIM)
-bicep/integration/  integration team: main.bicep (entry point: all of the below), plan.bicep (App Service plan), access.bicep + apim-config.json (APIM products and subscriptions for clients), workspace.bicep (APIM workspace + the same REST API), aigateway-mcp.bicep (registers MCP on the AI Gateway)
+bicep/apps/         apps team: functionapp.bicep (Function App), api.bicep (publishes REST API + MCP server to APIM), main.bicep (deploys both, for local use)
+bicep/integration/  integration team: plan.bicep (App Service plan), access.bicep + apim-config.json (APIM products and subscriptions for clients), workspace.bicep (APIM workspace + the same REST API), aigateway-mcp.bicep (registers MCP on the AI Gateway), main.bicep (deploys all, for local use)
 src/functionapp/  Node.js (v4 model) Azure Function App exposing a REST API
 swagger/swagger.json  OpenAPI (Swagger 2.0) definition imported into APIM
 .github/workflows/    10-deploy-platform, 20-deploy-integration, 30-deploy-plan, 31-deploy-apps, 32-deploy-api, 40-test-api
@@ -34,16 +35,16 @@ Run locally: `cd src/functionapp && npm ci && npm test`, then copy `local.settin
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `10-deploy-platform.yml` | changes to `bicep/platform/**` | lint, what-if (PRs), deploy `platform/main.bicep` (APIM, AI Gateway, storage, App Insights, network) |
-| `20-deploy-integration.yml` | changes to `bicep/integration/**`, manual, or called by 32 | deploys `integration/main.bicep`: `plan.bicep`, `access.bicep` (products and subscriptions from `bicep/integration/apim-config.json`), `workspace.bicep` (APIM workspace + API) and `aigateway-mcp.bicep` (MCP tool server on the AI Gateway). If the APIM API from 32 does not exist yet it deploys only the plan; then calls `40-test-api.yml` |
-| `30-deploy-plan.yml` | changes to `bicep/integration/plan.bicep`, or manual | deploys `integration/main.bicep` with `deployAppIntegration=false` (only the App Service plan the Function App needs) |
-| `31-deploy-apps.yml` | changes to `src/functionapp/**` / `bicep/apps/functionapp.bicep`, or manual | tests and zips the code; deploys `apps/main.bicep` with `deployApi=false` (the Function App) and the code |
-| `32-deploy-api.yml` | changes to `swagger/**` / `bicep/apps/api.bicep` / `bicep/apps/main.bicep`, or manual | deploys `apps/main.bicep` to publish the REST API and MCP server to APIM; runs 20 to complete the integration; then calls `40-test-api.yml` |
+| `10-deploy-platform.yml` | changes to `bicep/platform/**` / `bicep/settings.bicep` | lint, what-if (PRs), deploy `platform/main.bicep` (APIM, AI Gateway, storage, App Insights, network) |
+| `20-deploy-integration.yml` | changes to `bicep/integration/**` (except the plan), manual, or called by 32 | deploys `access.bicep` (products and subscriptions from `bicep/integration/apim-config.json`), `workspace.bicep` (APIM workspace + API) and `aigateway-mcp.bicep` (MCP tool server on the AI Gateway); then calls `40-test-api.yml` |
+| `30-deploy-plan.yml` | changes to `bicep/integration/plan.bicep`, or manual | deploys `plan.bicep` (the App Service plan the Function App needs) |
+| `31-deploy-apps.yml` | changes to `src/functionapp/**` / `bicep/apps/functionapp.bicep`, or manual | tests and zips the code; deploys `functionapp.bicep` and the code |
+| `32-deploy-api.yml` | changes to `swagger/**` / `bicep/apps/api.bicep`, or manual | deploys `api.bicep` (REST API and MCP server in APIM); runs 20 to complete the integration; then calls `40-test-api.yml` |
 | `40-test-api.yml` | changes to `tests/**`, daily schedule, manual, or called | looks up the function key and APIM subscription key, runs `tests/` against both endpoints |
 
 Order for a first deployment: **10 Deploy platform → 30 Deploy App Service plan → 31 Deploy apps → 32 Deploy API**. 32 needs the
 function host key, which exists once the code from 31 is deployed. It then runs 20 to finish client access, the workspace and
-the AI Gateway registration (they need the API), followed by the tests. 20 can also run on its own after that, for example when
+the AI Gateway registration (they need the API), followed by the tests. 20 can also run on its own afterwards, for example when
 `apim-config.json` changes; before the API exists it only creates the plan.
 
 All workflows can also be started manually (**Actions → pick a workflow → Run workflow**). Manual inputs: `31`

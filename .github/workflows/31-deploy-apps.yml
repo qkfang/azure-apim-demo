@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/functionapp/**'
       - 'bicep/apps/functionapp.bicep'
+      - 'bicep/settings.bicep'
       - '.github/workflows/31-deploy-apps.yml'
   pull_request:
     paths:
@@ -76,14 +77,14 @@ jobs:
 
       # The API needs the function host key, which only exists once the code is deployed, so the API is
       # published separately by workflow 32.
-      - name: Deploy apps/main.bicep (Function App only)
+      - name: Deploy functionapp.bicep
         shell: bash
         run: |
           az deployment group create \
-            --name "apps-func-${{ github.run_number }}" \
+            --name "func-${{ github.run_number }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/apps/main.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" deployApi=false \
+            --template-file bicep/apps/functionapp.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" \
             --query properties.outputs \
             --output json
 
