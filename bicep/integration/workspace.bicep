@@ -10,8 +10,7 @@ import { apimNameFor, functionAppNameFor, workspaceName, workspaceApiPath } from
 @description('Same base name used for platform/main.bicep.')
 param baseName string
 
-@description('APIM URL suffix for the workspace copy of the API (paths must be unique per gateway).')
-param apiPath string = workspaceApiPath
+var apiPath = workspaceApiPath
 
 var apimName = apimNameFor(baseName)
 var functionAppName = functionAppNameFor(baseName)

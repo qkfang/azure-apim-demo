@@ -7,12 +7,8 @@ import { apimNameFor, functionAppNameFor, productsApiName, productsMcpApiName, p
 @description('Same base name used for main.bicep.')
 param baseName string
 
-@description('APIM URL suffix for the API.')
-param apiPath string = productsApiPath
-
-@description('APIM URL suffix for the MCP server.')
-param mcpPath string = productsMcpPath
-
+var apiPath = productsApiPath
+var mcpPath = productsMcpPath
 var apimName = apimNameFor(baseName)
 var functionAppName = functionAppNameFor(baseName)
 
