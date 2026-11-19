@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   integration:
-    name: Deploy access, workspace and AI Gateway MCP (${{ inputs.env_name }})
+    name: Deploy (${{ inputs.env_name }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.env_name }}
     steps:
