@@ -1,4 +1,4 @@
-name: 40-Test deployed API
+name: 40-Test API
 
 on:
   push:

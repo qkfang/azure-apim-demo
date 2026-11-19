@@ -1,4 +1,4 @@
-name: 32-Deploy API (APIM)
+name: 32-Deploy API
 
 on:
   push:

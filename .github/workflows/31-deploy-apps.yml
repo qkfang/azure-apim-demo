@@ -1,4 +1,4 @@
-name: 31-Deploy apps (Function App)
+name: 31-Deploy apps
 
 on:
   push:

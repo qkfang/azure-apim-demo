@@ -1,4 +1,4 @@
-name: 20-Deploy integration (plan, client access, APIM workspace, AI Gateway MCP)
+name: 20-Deploy integration
 
 on:
   push:
