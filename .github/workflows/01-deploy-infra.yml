@@ -40,6 +40,7 @@ jobs:
           az bicep build --file bicep/main.bicep --stdout > /dev/null
           az bicep build --file bicep/api.bicep --stdout > /dev/null
           az bicep build --file bicep/aigateway-mcp.bicep --stdout > /dev/null
+          az bicep build --file bicep/workspace.bicep --stdout > /dev/null
 
       - uses: azure/login@v2
         with:

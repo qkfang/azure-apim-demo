@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   publish:
-    name: Import swagger and MCP server into APIM, register MCP on AI Gateway
+    name: Import swagger and MCP server into APIM (service + workspace), register MCP on AI Gateway
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -38,13 +38,40 @@ jobs:
       - name: Deploy api.bicep
         shell: bash
         run: |
-          az deployment group create \
-            --name "api-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/api.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json | tee outputs.json
+          for attempt in 1 2 3; do
+            if az deployment group create \
+              --name "api-${{ github.run_number }}" \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --template-file bicep/api.bicep \
+              --parameters baseName="${{ vars.BASE_NAME }}" \
+              --query properties.outputs \
+              --output json > outputs.json; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed (the APIM management endpoint can be briefly unavailable); retrying in 60s..."
+            sleep 60
+          done
+          echo "::error::api.bicep failed after retries"
+          exit 1
+
+      - name: Deploy workspace.bicep
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if az deployment group create \
+              --name "workspace-${{ github.run_number }}" \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --template-file bicep/workspace.bicep \
+              --parameters baseName="${{ vars.BASE_NAME }}" \
+              --query properties.outputs \
+              --output json > ws-outputs.json; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed (the APIM management endpoint can be briefly unavailable); retrying in 60s..."
+            sleep 60
+          done
+          echo "::error::workspace.bicep failed after retries"
+          exit 1
 
       # A freshly created AI Gateway stays in 'Activating' for a while and rejects requests until it is active.
       - name: Deploy aigateway-mcp.bicep
@@ -70,6 +97,7 @@ jobs:
         run: |
           {
             echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)"
+            echo "Workspace API base URL: $(jq -r .apiBaseUrl.value ws-outputs.json)"
             echo "APIM MCP endpoint: $(jq -r .mcpEndpoint.value outputs.json)"
             echo "AI Gateway MCP endpoint: $(jq -r .mcpEndpoint.value aigw-outputs.json)"
           } >> "$GITHUB_STEP_SUMMARY"

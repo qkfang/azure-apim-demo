@@ -3,7 +3,7 @@
 Azure API Management + CI/CD with GitHub Actions.
 
 ```
-bicep/        main.bicep (APIM, AI Gateway, Function App, plan, storage, App Insights), api.bicep (publishes REST API + MCP server to APIM), aigateway-mcp.bicep (registers MCP on the AI Gateway)
+bicep/        main.bicep (APIM, AI Gateway, Function App, plan, storage, App Insights), api.bicep (publishes REST API + MCP server to APIM), aigateway-mcp.bicep (registers MCP on the AI Gateway), workspace.bicep (APIM workspace + the same REST API)
 src/functionapp/  Node.js (v4 model) Azure Function App exposing a REST API
 swagger/swagger.json  OpenAPI (Swagger 2.0) definition imported into APIM
 .github/workflows/    01-deploy-infra, 02-deploy-functionapp, 03-deploy-api, 04-test-api
@@ -88,9 +88,10 @@ The Function App runs on a standard (S1) Linux plan with identity-based storage 
 network access is disabled (enforced by policy in this tenant), so `main.bicep` also creates a VNet, VNet integration for
 the Function App, and private endpoints + private DNS zones for blob/queue/table storage.
 
-APIM defaults to the `Developer` SKU because APIM MCP servers aren't supported on `Consumption`. Provisioning takes
-30-60 minutes. Override via the `apimSku` parameter (any tier except Consumption). An existing Consumption instance
-can't be changed in place; delete it or use a new `BASE_NAME`.
+APIM defaults to the `StandardV2` SKU: MCP servers aren't supported on `Consumption` and workspaces need Basic v2,
+Standard v2, Premium or Premium v2 (not Developer). Override via the `apimSku` parameter. The SKU can't be changed in
+place from a classic tier (Developer/Basic/Standard/Premium) to a v2 tier; delete (and purge) the instance or use a new
+`BASE_NAME`.
 
 ## MCP endpoint
 
@@ -112,3 +113,22 @@ preview). Get the runtime key with
 
 `tests/mcp.test.js` runs the same MCP scenario against the Function App, APIM (`APIM_MCP_URL`) and the AI Gateway
 (`AI_GATEWAY_MCP_URL`, `AI_GATEWAY_API_KEY`); `04-test-api.yml` sets these automatically.
+
+`.vscode/mcp.json` registers the APIM MCP server (`products-mcp`) for GitHub Copilot in VS Code. On first start it
+prompts for an APIM subscription key (for example `demo-default`), which VS Code stores securely, not in the repo.
+
+## APIM workspace
+
+`workspace.bicep` (deployed by `03-deploy-api.yml`) creates the workspace `products-team` and publishes the same Products API into it
+(imported from `swagger/swagger.json`): its own function-key named value, API policy, product `products-team-product` and
+subscription `products-team-tests`. On StandardV2 the workspace is served by the built-in gateway (`serveOn: workspaceAndDefault`).
+
+| Where | Endpoint |
+| --- | --- |
+| Service level | `https://apim-<BASE_NAME>.azure-api.net/products-api` |
+| Workspace | `https://apim-<BASE_NAME>.azure-api.net/ws-products-api` |
+
+Constraints: workspaces don't support MCP servers (the MCP server stays at service level), workspace policies can't
+reference service-level named values (hence the duplicated function key), and resource names must be unique across the
+whole service (hence the `products-team-` prefixes and the `ws-` path). `04-test-api.yml` runs the contract tests against
+the workspace endpoint (`APIM_WORKSPACE_BASE_URL`, `APIM_WORKSPACE_SUBSCRIPTION_KEY`).

@@ -3,6 +3,7 @@
 //   FUNCTION_KEY          function/host key (omit for local `func start`)
 //   APIM_BASE_URL         e.g. https://apim-<base>.azure-api.net/products-api
 //   APIM_SUBSCRIPTION_KEY APIM subscription key for the Demo product
+//   APIM_WORKSPACE_BASE_URL / APIM_WORKSPACE_SUBSCRIPTION_KEY  same API published in the APIM workspace
 // A suite is skipped when its base URL is not set.
 const { describe, test } = require('node:test');
 const assert = require('node:assert');
@@ -12,6 +13,8 @@ const functionBase = trim(process.env.FUNCTION_BASE_URL);
 const functionKey = process.env.FUNCTION_KEY;
 const apimBase = trim(process.env.APIM_BASE_URL);
 const apimKey = process.env.APIM_SUBSCRIPTION_KEY;
+const workspaceBase = trim(process.env.APIM_WORKSPACE_BASE_URL);
+const workspaceKey = process.env.APIM_WORKSPACE_SUBSCRIPTION_KEY;
 
 async function call(base, headers, method, path, body) {
   const res = await fetch(`${base}${path}`, {
@@ -106,6 +109,19 @@ contractSuite('APIM endpoint', apimBase, apimKey ? { 'Ocp-Apim-Subscription-Key'
 describe('APIM security', { skip: !apimBase && 'APIM_BASE_URL not configured' }, () => {
   test('rejects calls without a subscription key', async () => {
     const res = await call(apimBase, {}, 'GET', '/products');
+    assert.strictEqual(res.status, 401);
+  });
+});
+
+contractSuite(
+  'APIM workspace endpoint',
+  workspaceBase,
+  workspaceKey ? { 'Ocp-Apim-Subscription-Key': workspaceKey } : {},
+);
+
+describe('APIM workspace security', { skip: !workspaceBase && 'APIM_WORKSPACE_BASE_URL not configured' }, () => {
+  test('rejects calls without a subscription key', async () => {
+    const res = await call(workspaceBase, {}, 'GET', '/products');
     assert.strictEqual(res.status, 401);
   });
 });
