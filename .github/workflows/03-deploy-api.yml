@@ -9,7 +9,16 @@ on:
       - 'bicep/apim-config.json'
       - '.github/workflows/03-deploy-api.yml'
   workflow_dispatch:
+    inputs:
+      run_tests:
+        description: 'Run the integration tests after publishing'
+        type: boolean
+        default: true
   workflow_call:
+    inputs:
+      run_tests:
+        type: boolean
+        default: true
 
 permissions:
   id-token: write
@@ -47,5 +56,6 @@ jobs:
   test:
     name: Test deployed API
     needs: publish
+    if: github.event_name == 'push' || inputs.run_tests
     uses: ./.github/workflows/04-test-api.yml
     secrets: inherit

@@ -11,6 +11,11 @@ on:
     paths:
       - 'bicep/**'
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy after what-if (uncheck for a what-if only run)'
+        type: boolean
+        default: true
 
 permissions:
   id-token: write
@@ -51,7 +56,7 @@ jobs:
   deploy:
     name: Deploy
     needs: validate
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     runs-on: ubuntu-latest
     environment: dev
     steps:

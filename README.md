@@ -39,6 +39,9 @@ Run locally: `cd src/functionapp && npm ci && npm test`, then copy `local.settin
 
 Order for a first deployment: **Deploy infrastructure → Deploy Function App** (which also publishes the API and runs the tests).
 
+All workflows can also be started manually (**Actions → pick a workflow → Run workflow**). Manual inputs: `01` and `02`
+have `deploy` (uncheck for what-if / build-and-test only), `02` has `publish_api`, and `03` has `run_tests`.
+
 ## Integration tests
 
 `tests/` uses the built-in Node test runner (no dependencies) and checks the same contract (health, product CRUD,
