@@ -67,32 +67,39 @@ resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-09-01-pre
   }
 }
 
-resource product 'Microsoft.ApiManagement/service/products@2023-09-01-preview' = {
-  parent: apim
-  name: 'demo'
-  properties: {
-    displayName: 'Demo'
-    description: 'Demo product exposing the Products API.'
-    state: 'published'
-    subscriptionRequired: true
-    approvalRequired: false
-  }
-}
+// Products and subscriptions are defined in apim-config.json; every product exposes the API above.
+var config = loadJsonContent('apim-config.json')
 
-resource productApi 'Microsoft.ApiManagement/service/products/apis@2023-09-01-preview' = {
-  parent: product
+resource products 'Microsoft.ApiManagement/service/products@2023-09-01-preview' = [for p in config.products: {
+  parent: apim
+  name: p.name
+  properties: {
+    displayName: p.displayName
+    description: p.?description
+    state: p.?state ?? 'published'
+    subscriptionRequired: p.?subscriptionRequired ?? true
+    approvalRequired: p.?approvalRequired ?? false
+    subscriptionsLimit: p.?subscriptionsLimit
+  }
+}]
+
+resource productApis 'Microsoft.ApiManagement/service/products/apis@2023-09-01-preview' = [for (p, i) in config.products: {
+  parent: products[i]
   name: api.name
-}
+}]
 
-// Subscription used by the integration tests in tests/ (key fetched at runtime by the workflow).
-resource testSubscription 'Microsoft.ApiManagement/service/subscriptions@2023-09-01-preview' = {
+// 'demo-tests' is used by the integration tests in tests/ (its key is fetched at runtime by the workflow).
+resource subscriptions 'Microsoft.ApiManagement/service/subscriptions@2023-09-01-preview' = [for s in config.subscriptions: {
   parent: apim
-  name: 'demo-tests'
+  name: s.name
   properties: {
-    displayName: 'Demo integration tests'
-    scope: product.id
-    state: 'active'
+    displayName: s.displayName
+    scope: '${apim.id}/products/${s.product}'
+    state: s.?state ?? 'active'
   }
-}
+  dependsOn: [products]
+}]
 
 output apiBaseUrl string = '${apim.properties.gatewayUrl}/${apiPath}'
+output products array = [for p in config.products: p.name]
+output subscriptions array = [for s in config.subscriptions: s.name]

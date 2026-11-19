@@ -6,6 +6,7 @@ on:
     paths:
       - 'swagger/**'
       - 'bicep/api.bicep'
+      - 'bicep/apim-config.json'
       - '.github/workflows/03-deploy-api.yml'
   workflow_dispatch:
   workflow_call:

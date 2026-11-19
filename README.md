@@ -34,7 +34,7 @@ Run locally: `cd src/functionapp && npm ci && npm test`, then copy `local.settin
 | --- | --- | --- |
 | `01-deploy-infra.yml` | changes to `bicep/main.*` | lint, what-if (PRs), deploy `main.bicep` |
 | `02-deploy-functionapp.yml` | changes to `src/functionapp/**` | test, zip, deploy to Function App, then calls `03-deploy-api.yml` |
-| `03-deploy-api.yml` | changes to `swagger/**` / `api.bicep`, or called | deploys `api.bicep`: imports `swagger.json` as an APIM API, sets backend + function key policy, product, a `demo-tests` subscription; then calls `04-test-api.yml` |
+| `03-deploy-api.yml` | changes to `swagger/**` / `api.bicep` / `apim-config.json`, or called | deploys `api.bicep`: imports `swagger.json` as an APIM API, sets backend + function key policy, and creates the products and subscriptions from `bicep/apim-config.json`; then calls `04-test-api.yml` |
 | `04-test-api.yml` | changes to `tests/**`, daily schedule, manual, or called | looks up the function key and APIM subscription key, runs `tests/` against both endpoints |
 
 Order for a first deployment: **Deploy infrastructure → Deploy Function App** (which also publishes the API and runs the tests).
@@ -51,6 +51,17 @@ $env:FUNCTION_BASE_URL = "https://func-<BASE_NAME>.azurewebsites.net/api"; $env:
 $env:APIM_BASE_URL = "https://apim-<BASE_NAME>.azure-api.net/demo";       $env:APIM_SUBSCRIPTION_KEY = "<apim key>"
 npm test
 ```
+
+## APIM products and subscriptions
+
+Defined in `bicep/apim-config.json` and deployed by `03-deploy-api.yml` (edit the file, push to `main`):
+
+- `products[]`: `name`, `displayName`, optional `description`, `state`, `subscriptionRequired`, `approvalRequired`,
+  `subscriptionsLimit`. Every product exposes the Products API.
+- `subscriptions[]`: `name`, `displayName`, `product` (a product `name`), optional `state`.
+
+Keep the `demo-tests` subscription on the `demo` product; `04-test-api.yml` uses it. Subscription keys are not stored in
+the repo; read them from the portal or `az rest ... /subscriptions/<name>/listSecrets`.
 
 ## One-time setup
 

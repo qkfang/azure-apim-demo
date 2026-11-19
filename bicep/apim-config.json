@@ -1,0 +1,41 @@
+{
+  "products": [
+    {
+      "name": "demo",
+      "displayName": "Demo",
+      "description": "Demo product exposing the Products API.",
+      "state": "published",
+      "subscriptionRequired": true,
+      "approvalRequired": false
+    },
+    {
+      "name": "partner",
+      "displayName": "Partner",
+      "description": "Partner product: limited subscriptions, requires approval.",
+      "state": "published",
+      "subscriptionRequired": true,
+      "approvalRequired": true,
+      "subscriptionsLimit": 5
+    }
+  ],
+  "subscriptions": [
+    {
+      "name": "demo-tests",
+      "displayName": "Demo integration tests",
+      "product": "demo",
+      "state": "active"
+    },
+    {
+      "name": "demo-default",
+      "displayName": "Demo default subscription",
+      "product": "demo",
+      "state": "active"
+    },
+    {
+      "name": "partner-default",
+      "displayName": "Partner default subscription",
+      "product": "partner",
+      "state": "active"
+    }
+  ]
+}
