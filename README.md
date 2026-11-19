@@ -54,11 +54,10 @@ npm test
 
 ## One-time setup
 
-1. Create an Entra app registration / service principal with a federated credential for
-   `repo:qkfang/azure-apim-demo:ref:refs/heads/main` (and `pull_request` for what-if), and grant it
-   **Contributor** on the subscription or resource group.
-2. Repository **secrets**: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
-3. Repository **variables**:
+1. Create a service principal with **Contributor** on the resource group and save its JSON
+   (`az ad sp create-for-rbac --sdk-auth ...`) as the secret `AZURE_CREDENTIALS` in the GitHub
+   environment **dev** (all deploy/test jobs use `environment: dev`).
+2. Repository **variables**:
    - `AZURE_RESOURCE_GROUP` – e.g. `rg-apim-demo`
    - `AZURE_LOCATION` – e.g. `australiaeast`
    - `BASE_NAME` – globally unique 3–12 chars (lowercase/digits); resources are `apim-<BASE_NAME>`, `func-<BASE_NAME>`

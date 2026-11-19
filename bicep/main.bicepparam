@@ -1,5 +1,5 @@
 using 'main.bicep'
 
 // baseName must be globally unique (it forms the APIM / Function App host names).
-param baseName = 'apimdemo01'
-param publisherEmail = 'admin@example.com'
+param baseName = readEnvironmentVariable('BASE_NAME', 'apimdemoqf01')
+param publisherEmail = readEnvironmentVariable('PUBLISHER_EMAIL', 'admin@example.com')
