@@ -1,11 +1,11 @@
-name: 04-Test deployed API
+name: 40-Test deployed API
 
 on:
   push:
     branches: [main]
     paths:
       - 'tests/**'
-      - '.github/workflows/04-test-api.yml'
+      - '.github/workflows/40-test-api.yml'
   schedule:
     - cron: '0 20 * * *' # daily smoke test of the deployed API
   workflow_dispatch:

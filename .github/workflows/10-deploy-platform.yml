@@ -1,11 +1,11 @@
-name: 01-Deploy infrastructure
+name: 10-Deploy platform
 
 on:
   push:
     branches: [main]
     paths:
       - 'bicep/platform/**'
-      - '.github/workflows/01-deploy-infra.yml'
+      - '.github/workflows/10-deploy-platform.yml'
   pull_request:
     paths:
       - 'bicep/platform/**'

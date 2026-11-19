@@ -1,0 +1,70 @@
+name: 32-Deploy API (APIM)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'swagger/**'
+      - 'bicep/apps/api.bicep'
+      - 'bicep/apps/main.bicep'
+      - '.github/workflows/32-deploy-api.yml'
+  workflow_dispatch:
+    inputs:
+      run_tests:
+        description: 'Run the integration tests after deploying'
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  api:
+    name: Publish API and MCP server to APIM
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate swagger is valid JSON
+        run: jq empty swagger/swagger.json
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Needs the function code from workflow 31 (the function host key must exist).
+      - name: Deploy apps/main.bicep
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "api-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/apps/main.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" \
+            --query properties.outputs \
+            --output json > outputs.json
+
+      - name: Summary
+        run: |
+          {
+            echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)"
+            echo "APIM MCP endpoint: $(jq -r .mcpEndpoint.value outputs.json)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Client access, the APIM workspace and the AI Gateway registration depend on the API just published.
+  integration:
+    name: Complete integration
+    needs: api
+    uses: ./.github/workflows/20-deploy-integration.yml
+    with:
+      skip_tests: true
+    secrets: inherit
+
+  test:
+    name: Test deployed API
+    needs: integration
+    if: github.event_name == 'push' || inputs.run_tests
+    uses: ./.github/workflows/40-test-api.yml
+    secrets: inherit

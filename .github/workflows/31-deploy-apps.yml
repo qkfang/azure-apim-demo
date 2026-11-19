@@ -1,4 +1,4 @@
-name: 02-Deploy Function App
+name: 31-Deploy apps (Function App)
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
     paths:
       - 'src/functionapp/**'
       - 'bicep/apps/functionapp.bicep'
-      - '.github/workflows/02-deploy-functionapp.yml'
+      - '.github/workflows/31-deploy-apps.yml'
   pull_request:
     paths:
       - 'src/functionapp/**'
@@ -26,29 +26,6 @@ env:
   NODE_VERSION: '20.x'
 
 jobs:
-  infra:
-    name: Deploy apps/main.bicep (Function App only)
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy apps/main.bicep (Function App only)
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "apps-func-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/apps/main.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" deployApi=false \
-            --query properties.outputs \
-            --output json
-
   build:
     name: Build and test
     runs-on: ubuntu-latest
@@ -80,13 +57,15 @@ jobs:
           name: functionapp
           path: functionapp.zip
 
-  deploy:
-    name: Deploy to Azure
-    needs: [build, infra]
+  function-app:
+    name: Deploy Function App (infra + code)
+    needs: build
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     runs-on: ubuntu-latest
     environment: dev
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: functionapp
@@ -94,6 +73,19 @@ jobs:
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # The API needs the function host key, which only exists once the code is deployed, so the API is
+      # published separately by workflow 32.
+      - name: Deploy apps/main.bicep (Function App only)
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "apps-func-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/apps/main.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" deployApi=false \
+            --query properties.outputs \
+            --output json
 
       - name: Deploy zip package
         uses: Azure/functions-action@v1
