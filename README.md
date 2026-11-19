@@ -132,3 +132,9 @@ Constraints: workspaces don't support MCP servers (the MCP server stays at servi
 reference service-level named values (hence the duplicated function key), and resource names must be unique across the
 whole service (hence the `products-team-` prefixes and the `ws-` path). `04-test-api.yml` runs the contract tests against
 the workspace endpoint (`APIM_WORKSPACE_BASE_URL`, `APIM_WORKSPACE_SUBSCRIPTION_KEY`).
+
+Workspace APIs only accept subscription keys created **inside the workspace** (service-level subscriptions such as `demo-default` get a 401). Get the key with:
+
+```
+az rest --method post --url "https://management.azure.com/subscriptions/<SUB_ID>/resourceGroups/<RG>/providers/Microsoft.ApiManagement/service/apim-<BASE_NAME>/workspaces/products-team/subscriptions/products-team-tests/listSecrets?api-version=2024-05-01" --query primaryKey -o tsv
+```
