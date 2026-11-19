@@ -84,8 +84,9 @@ the repo; read them from the portal or `az rest ... /subscriptions/<name>/listSe
 curl -H "Ocp-Apim-Subscription-Key: <key>" https://apim-<BASE_NAME>.azure-api.net/demo/products
 ```
 
-The Function App runs on a standard (S1) Linux plan with identity-based storage (no storage keys),
-so it works in tenants where shared-key access is blocked by policy.
+The Function App runs on a standard (S1) Linux plan with identity-based storage (no storage keys). Storage public
+network access is disabled (enforced by policy in this tenant), so `main.bicep` also creates a VNet, VNet integration for
+the Function App, and private endpoints + private DNS zones for blob/queue/table storage.
 
 APIM defaults to the `BasicV2` SKU because APIM MCP servers aren't supported on `Consumption`. Override via the `apimSku`
 parameter (any tier except Consumption). An existing Consumption instance can't be changed in place; delete it or use a
