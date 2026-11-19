@@ -69,6 +69,7 @@ jobs:
 
       - name: Deploy main.bicep
         id: deploy
+        shell: bash
         run: |
           az deployment group create \
             --name "infra-${{ github.run_number }}" \

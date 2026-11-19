@@ -36,6 +36,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy api.bicep
+        shell: bash
         run: |
           az deployment group create \
             --name "api-${{ github.run_number }}" \
@@ -45,15 +46,25 @@ jobs:
             --query properties.outputs \
             --output json | tee outputs.json
 
+      # A freshly created AI Gateway stays in 'Activating' for a while and rejects requests until it is active.
       - name: Deploy aigateway-mcp.bicep
+        shell: bash
         run: |
-          az deployment group create \
-            --name "aigw-mcp-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-            --template-file bicep/aigateway-mcp.bicep \
-            --parameters baseName="${{ vars.BASE_NAME }}" \
-            --query properties.outputs \
-            --output json | tee aigw-outputs.json
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if az deployment group create \
+              --name "aigw-mcp-${{ github.run_number }}" \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --template-file bicep/aigateway-mcp.bicep \
+              --parameters baseName="${{ vars.BASE_NAME }}" \
+              --query properties.outputs \
+              --output json > aigw-outputs.json; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed (AI Gateway may still be activating); retrying in 60s..."
+            sleep 60
+          done
+          echo "::error::aigateway-mcp.bicep failed after retries"
+          exit 1
 
       - name: Summary
         run: |
