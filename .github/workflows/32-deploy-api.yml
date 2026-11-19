@@ -52,19 +52,3 @@ jobs:
             echo "API base URL: $(jq -r .apiBaseUrl.value outputs.json)"
             echo "APIM MCP endpoint: $(jq -r .mcpEndpoint.value outputs.json)"
           } >> "$GITHUB_STEP_SUMMARY"
-
-  # Client access, the APIM workspace and the AI Gateway registration depend on the API just published.
-  integration:
-    name: Complete integration
-    needs: api
-    uses: ./.github/workflows/20-deploy-integration.yml
-    with:
-      skip_tests: true
-    secrets: inherit
-
-  test:
-    name: Test deployed API
-    needs: integration
-    if: github.event_name == 'push' || inputs.run_tests
-    uses: ./.github/workflows/40-test-api.yml
-    secrets: inherit

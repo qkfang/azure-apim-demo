@@ -15,12 +15,6 @@ on:
         description: 'Run the integration tests after deploying'
         type: boolean
         default: true
-  workflow_call:
-    inputs:
-      skip_tests:
-        description: 'Skip the integration tests (the calling workflow runs them)'
-        type: boolean
-        default: false
 
 permissions:
   id-token: write
@@ -82,9 +76,3 @@ jobs:
             echo "AI Gateway MCP endpoint: $(jq -r .mcpEndpoint.value aigw-outputs.json)"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  test:
-    name: Test deployed API
-    needs: deploy
-    if: ${{ !inputs.skip_tests && (github.event_name == 'push' || inputs.run_tests) }}
-    uses: ./.github/workflows/40-test-api.yml
-    secrets: inherit

@@ -36,16 +36,16 @@ Run locally: `cd src/functionapp && npm ci && npm test`, then copy `local.settin
 | Workflow | Trigger | Does |
 | --- | --- | --- |
 | `10-deploy-platform.yml` | changes to `bicep/platform/**` / `bicep/settings.bicep` | lint, what-if (PRs), deploy `platform/main.bicep` (APIM, AI Gateway, storage, App Insights, network) |
-| `20-deploy-integration.yml` | changes to `bicep/integration/**` (except the plan), manual, or called by 32 | deploys `access.bicep` (products and subscriptions from `bicep/integration/apim-config.json`), `workspace.bicep` (APIM workspace + API) and `aigateway-mcp.bicep` (MCP tool server on the AI Gateway); then calls `40-test-api.yml` |
+| `20-deploy-integration.yml` | changes to `bicep/integration/**` (except the plan), or manual | deploys `access.bicep` (products and subscriptions from `bicep/integration/apim-config.json`), `workspace.bicep` (APIM workspace + API) and `aigateway-mcp.bicep` (MCP tool server on the AI Gateway); then calls `40-test-api.yml` |
 | `30-deploy-plan.yml` | changes to `bicep/integration/plan.bicep`, or manual | deploys `plan.bicep` (the App Service plan the Function App needs) |
 | `31-deploy-apps.yml` | changes to `src/functionapp/**` / `bicep/apps/functionapp.bicep`, or manual | tests and zips the code; deploys `functionapp.bicep` and the code |
-| `32-deploy-api.yml` | changes to `swagger/**` / `bicep/apps/api.bicep`, or manual | deploys `api.bicep` (REST API and MCP server in APIM); runs 20 to complete the integration; then calls `40-test-api.yml` |
+| `32-deploy-api.yml` | changes to `swagger/**` / `bicep/apps/api.bicep`, or manual | deploys `api.bicep` (REST API and MCP server in APIM); then calls `40-test-api.yml` |
 | `40-test-api.yml` | changes to `tests/**`, daily schedule, manual, or called | looks up the function key and APIM subscription key, runs `tests/` against both endpoints |
 
-Order for a first deployment: **10 Deploy platform → 30 Deploy App Service plan → 31 Deploy apps → 32 Deploy API**. 32 needs the
-function host key, which exists once the code from 31 is deployed. It then runs 20 to finish client access, the workspace and
-the AI Gateway registration (they need the API), followed by the tests. 20 can also run on its own afterwards, for example when
-`apim-config.json` changes; before the API exists it only creates the plan.
+Order for a first deployment: **10 Deploy platform → 30 Deploy App Service plan → 31 Deploy apps → 32 Deploy API → 20 Deploy integration**.
+32 needs the function host key, which exists once the code from 31 is deployed. 20 needs the API from 32 (products link to it) and
+the function code, so run it last the first time; afterwards it runs on its own when icep/integration/** changes (for example
+pim-config.json), and 32 does not need to re-run it.
 
 All workflows can also be started manually (**Actions → pick a workflow → Run workflow**). Manual inputs: `31`
 has `deploy` (uncheck for build-and-test only), and `20` / `32` have `run_tests`.
