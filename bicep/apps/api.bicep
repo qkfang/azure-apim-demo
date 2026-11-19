@@ -2,15 +2,18 @@
 // Run after main.bicep and after the function code has been deployed (the host key must exist).
 targetScope = 'resourceGroup'
 
-import { apimNameFor, functionAppNameFor, productsApiName, productsMcpApiName, productsApiPath, productsMcpPath } from '../settings.bicep'
+import { envType, apimNameFor, functionAppNameFor, productsApiName, productsMcpApiName, productsApiPath, productsMcpPath } from '../settings.bicep'
 
 @description('Same base name used for main.bicep.')
 param baseName string
 
+@description('Deployment environment (dev, uat or prd).')
+param envName envType
+
 var apiPath = productsApiPath
 var mcpPath = productsMcpPath
-var apimName = apimNameFor(baseName)
-var functionAppName = functionAppNameFor(baseName)
+var apimName = apimNameFor(baseName, envName)
+var functionAppName = functionAppNameFor(baseName, envName)
 
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
   name: apimName

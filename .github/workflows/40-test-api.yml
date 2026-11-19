@@ -6,10 +6,16 @@ on:
     paths:
       - 'tests/**'
       - '.github/workflows/40-test-api.yml'
+      - '.github/actions/test-api/**'
   schedule:
-    - cron: '0 20 * * *' # daily smoke test of the deployed API
+    - cron: '0 20 * * *' # daily smoke test of the deployed dev API
   workflow_dispatch:
-  workflow_call:
+    inputs:
+      env_name:
+        description: 'Environment to test'
+        type: choice
+        options: [dev, uat, prd]
+        default: dev
 
 permissions:
   id-token: write
@@ -17,59 +23,18 @@ permissions:
 
 jobs:
   test:
-    name: Integration tests (Function App + APIM + APIM workspace + AI Gateway)
+    name: Integration tests (${{ inputs.env_name || 'dev' }})
     runs-on: ubuntu-latest
-    environment: dev
-    env:
-      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-      FUNC_NAME: func-${{ vars.BASE_NAME }}
-      APIM_NAME: apim-${{ vars.BASE_NAME }}
-      AIGW_NAME: aigw-${{ vars.BASE_NAME }}
+    environment: ${{ inputs.env_name || 'dev' }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
 
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Resolve endpoints and keys
-        run: |
-          FUNC_HOST=$(az functionapp show -g "$RESOURCE_GROUP" -n "$FUNC_NAME" --query defaultHostName -o tsv)
-          FUNC_KEY=$(az functionapp keys list -g "$RESOURCE_GROUP" -n "$FUNC_NAME" --query functionKeys.default -o tsv)
-          APIM_URL=$(az apim show -g "$RESOURCE_GROUP" -n "$APIM_NAME" --query gatewayUrl -o tsv)
-          SUB_ID=$(az account show --query id -o tsv)
-          APIM_KEY=$(az rest --method post \
-            --url "https://management.azure.com/subscriptions/$SUB_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ApiManagement/service/$APIM_NAME/subscriptions/demo-tests/listSecrets?api-version=2023-09-01-preview" \
-            --query primaryKey -o tsv)
-          WS_KEY=$(az rest --method post \
-            --url "https://management.azure.com/subscriptions/$SUB_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ApiManagement/service/$APIM_NAME/workspaces/products-team/subscriptions/products-team-tests/listSecrets?api-version=2024-05-01" \
-            --query primaryKey -o tsv)
-          AIGW_ID="/subscriptions/$SUB_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ApiManagement/aigateways/$AIGW_NAME"
-          AIGW_HOST=$(az rest --method get --url "https://management.azure.com$AIGW_ID?api-version=2026-11-01" \
-            --query properties.frontend.defaultHostname -o tsv)
-          AIGW_KEY=$(az rest --method post \
-            --url "https://management.azure.com$AIGW_ID/apiKeys/products-mcp-client/listSecrets?api-version=2026-11-01" \
-            --query primaryKey -o tsv)
-          echo "::add-mask::$FUNC_KEY"
-          echo "::add-mask::$APIM_KEY"
-          echo "::add-mask::$WS_KEY"
-          echo "::add-mask::$AIGW_KEY"
-          {
-            echo "FUNCTION_BASE_URL=https://$FUNC_HOST/api"
-            echo "FUNCTION_KEY=$FUNC_KEY"
-            echo "APIM_BASE_URL=$APIM_URL/products-api"
-            echo "APIM_SUBSCRIPTION_KEY=$APIM_KEY"
-            echo "APIM_WORKSPACE_BASE_URL=$APIM_URL/ws-products-api"
-            echo "APIM_WORKSPACE_SUBSCRIPTION_KEY=$WS_KEY"
-            echo "APIM_MCP_URL=$APIM_URL/products-mcp/mcp"
-            echo "AI_GATEWAY_MCP_URL=https://$AIGW_HOST/default/toolservers/products/mcp"
-            echo "AI_GATEWAY_API_KEY=$AIGW_KEY"
-          } >> "$GITHUB_ENV"
-
-      - name: Run integration tests
-        working-directory: tests
-        run: npm test
+      - uses: ./.github/actions/test-api
+        with:
+          env-name: ${{ inputs.env_name || 'dev' }}
+          resource-group: ${{ vars.AZURE_RESOURCE_GROUP }}
+          base-name: ${{ vars.BASE_NAME }}

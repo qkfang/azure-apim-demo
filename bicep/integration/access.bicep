@@ -2,12 +2,15 @@
 // Owned by the integration team. Run after apps/api.bicep (the APIs must exist).
 targetScope = 'resourceGroup'
 
-import { apimNameFor, productsApiName, productsMcpApiName } from '../settings.bicep'
+import { envType, apimNameFor, productsApiName, productsMcpApiName } from '../settings.bicep'
 
 @description('Same base name used for platform/main.bicep.')
 param baseName string
 
-var apimName = apimNameFor(baseName)
+@description('Deployment environment (dev, uat or prd).')
+param envName envType
+
+var apimName = apimNameFor(baseName, envName)
 
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
   name: apimName

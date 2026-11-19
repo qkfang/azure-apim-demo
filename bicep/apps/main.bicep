@@ -4,8 +4,13 @@
 // Needs platform/main.bicep and integration/plan.bicep deployed first.
 targetScope = 'resourceGroup'
 
+import { envType } from '../settings.bicep'
+
 @description('Same base name used for platform/main.bicep.')
 param baseName string
+
+@description('Deployment environment (dev, uat or prd).')
+param envName envType
 
 @description('Azure region.')
 param location string = resourceGroup().location
@@ -14,6 +19,7 @@ module functionApp 'functionapp.bicep' = {
   name: 'functionapp'
   params: {
     baseName: baseName
+    envName: envName
     location: location
   }
 }
@@ -22,6 +28,7 @@ module api 'api.bicep' = {
   name: 'api'
   params: {
     baseName: baseName
+    envName: envName
   }
   dependsOn: [functionApp]
 }

@@ -8,6 +8,9 @@ targetScope = 'resourceGroup'
 @maxLength(12)
 param baseName string
 
+@description('Deployment environment (dev, uat or prd); part of every resource name.')
+param envName envType
+
 @description('Azure region.')
 param location string = resourceGroup().location
 
@@ -25,14 +28,14 @@ param apimSku string = 'StandardV2'
 @allowed(['eastus2', 'swedencentral'])
 param aiGatewayLocation string = 'eastus2'
 
-import { apimNameFor, aiGatewayNameFor, logAnalyticsNameFor, appInsightsNameFor, vnetNameFor, storageNameFor } from '../settings.bicep'
+import { envType, apimNameFor, aiGatewayNameFor, logAnalyticsNameFor, appInsightsNameFor, vnetNameFor, storageNameFor } from '../settings.bicep'
 
-var apimName = apimNameFor(baseName)
-var aiGatewayName = aiGatewayNameFor(baseName)
-var storageName = storageNameFor(baseName, resourceGroup().id)
+var apimName = apimNameFor(baseName, envName)
+var aiGatewayName = aiGatewayNameFor(baseName, envName)
+var storageName = storageNameFor(baseName, envName, resourceGroup().id)
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
-  name: logAnalyticsNameFor(baseName)
+  name: logAnalyticsNameFor(baseName, envName)
   location: location
   properties: {
     sku: { name: 'PerGB2018' }
@@ -41,7 +44,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 }
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
-  name: appInsightsNameFor(baseName)
+  name: appInsightsNameFor(baseName, envName)
   location: location
   kind: 'web'
   properties: {
@@ -70,7 +73,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
 }
 
 resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
-  name: vnetNameFor(baseName)
+  name: vnetNameFor(baseName, envName)
   location: location
   properties: {
     addressSpace: { addressPrefixes: ['10.20.0.0/16'] }
@@ -104,7 +107,7 @@ resource dnsZones 'Microsoft.Network/privateDnsZones@2020-06-01' = [for svc in s
 
 resource dnsLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [for (svc, i) in storageServices: {
   parent: dnsZones[i]
-  name: 'link-${baseName}'
+  name: 'link-${baseName}-${envName}'
   location: 'global'
   properties: {
     virtualNetwork: { id: vnet.id }

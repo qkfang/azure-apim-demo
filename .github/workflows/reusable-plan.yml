@@ -1,0 +1,35 @@
+name: Reusable - plan (one environment)
+
+on:
+  workflow_call:
+    inputs:
+      env_name:
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  plan:
+    name: Deploy plan.bicep (${{ inputs.env_name }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy plan.bicep
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "plan-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/integration/plan.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" envName="${{ inputs.env_name }}" \
+            --query properties.outputs \
+            --output json

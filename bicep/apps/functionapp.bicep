@@ -2,19 +2,22 @@
 // Deploy after platform/main.bicep (storage, VNet, App Insights) and integration/plan.bicep (App Service plan).
 targetScope = 'resourceGroup'
 
-import { functionAppNameFor, planNameFor, appInsightsNameFor, vnetNameFor, storageNameFor } from '../settings.bicep'
+import { envType, functionAppNameFor, planNameFor, appInsightsNameFor, vnetNameFor, storageNameFor } from '../settings.bicep'
 
 @description('Same base name used for main.bicep.')
 param baseName string
 
+@description('Deployment environment (dev, uat or prd).')
+param envName envType
+
 @description('Azure region.')
 param location string = resourceGroup().location
 
-var functionAppName = functionAppNameFor(baseName)
-var storageName = storageNameFor(baseName, resourceGroup().id)
+var functionAppName = functionAppNameFor(baseName, envName)
+var storageName = storageNameFor(baseName, envName, resourceGroup().id)
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
-  name: appInsightsNameFor(baseName)
+  name: appInsightsNameFor(baseName, envName)
 }
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
@@ -22,11 +25,11 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
 }
 
 resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' existing = {
-  name: vnetNameFor(baseName)
+  name: vnetNameFor(baseName, envName)
 }
 
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' existing = {
-  name: planNameFor(baseName)
+  name: planNameFor(baseName, envName)
 }
 
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {

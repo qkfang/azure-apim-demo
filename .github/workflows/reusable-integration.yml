@@ -1,0 +1,80 @@
+name: Reusable - integration (one environment)
+
+on:
+  workflow_call:
+    inputs:
+      env_name:
+        type: string
+        required: true
+      run_tests:
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  integration:
+    name: Deploy access, workspace and AI Gateway MCP (${{ inputs.env_name }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate swagger is valid JSON
+        run: jq empty swagger/swagger.json
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # These need the apps team's API and function code (workflows 31 and 32) and the plan from workflow 30.
+      - name: Deploy access.bicep (products and subscriptions)
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "access-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/integration/access.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" envName="${{ inputs.env_name }}" \
+            --query properties.outputs \
+            --output json
+
+      - name: Deploy workspace.bicep
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "workspace-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/integration/workspace.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" envName="${{ inputs.env_name }}" \
+            --query properties.outputs \
+            --output json > ws-outputs.json
+
+      - name: Deploy aigateway-mcp.bicep
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "aigw-mcp-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/integration/aigateway-mcp.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" envName="${{ inputs.env_name }}" \
+            --query properties.outputs \
+            --output json > aigw-outputs.json
+
+      - name: Summary
+        run: |
+          {
+            echo "### Integration deployed (${{ inputs.env_name }})"
+            echo "Workspace API base URL: $(jq -r .apiBaseUrl.value ws-outputs.json)"
+            echo "AI Gateway MCP endpoint: $(jq -r .mcpEndpoint.value aigw-outputs.json)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Integration tests
+        if: inputs.run_tests
+        uses: ./.github/actions/test-api
+        with:
+          env-name: ${{ inputs.env_name }}
+          resource-group: ${{ vars.AZURE_RESOURCE_GROUP }}
+          base-name: ${{ vars.BASE_NAME }}

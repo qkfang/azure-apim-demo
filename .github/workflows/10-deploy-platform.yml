@@ -7,6 +7,7 @@ on:
       - 'bicep/platform/**'
       - 'bicep/settings.bicep'
       - '.github/workflows/10-deploy-platform.yml'
+      - '.github/workflows/reusable-platform.yml'
   pull_request:
     paths:
       - 'bicep/platform/**'
@@ -22,65 +23,27 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  BASE_NAME: ${{ vars.BASE_NAME }}
-  PUBLISHER_EMAIL: ${{ vars.PUBLISHER_EMAIL }}
-  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-  LOCATION: ${{ vars.AZURE_LOCATION }}
-
+# dev runs first (what-if only on pull requests); uat and prd run in order and wait for the approval
+# configured as required reviewers on the GitHub environments of the same name.
 jobs:
-  validate:
-    name: Lint and what-if
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
+  dev:
+    uses: ./.github/workflows/reusable-platform.yml
+    secrets: inherit
+    with:
+      env_name: dev
+      deploy: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.deploy) }}
 
-      - name: Lint Bicep
-        run: |
-          az bicep build --file bicep/platform/main.bicep --stdout > /dev/null
-
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Ensure resource group
-        run: az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
-
-      - name: What-if
-        run: |
-          az deployment group what-if \
-            --resource-group "$RESOURCE_GROUP" \
-            --parameters bicep/platform/main.bicepparam
-
-  deploy:
-    name: Deploy
-    needs: validate
+  uat:
+    needs: dev
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
+    uses: ./.github/workflows/reusable-platform.yml
+    secrets: inherit
+    with:
+      env_name: uat
 
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy main.bicep
-        id: deploy
-        shell: bash
-        run: |
-          az deployment group create \
-            --name "infra-${{ github.run_number }}" \
-            --resource-group "$RESOURCE_GROUP" \
-            --parameters bicep/platform/main.bicepparam \
-            --query properties.outputs \
-            --output json | tee outputs.json
-
-      - name: Summary
-        run: |
-          {
-            echo "### Infrastructure deployed"
-            echo "- APIM gateway: $(jq -r .apimGatewayUrl.value outputs.json)"
-            echo "- AI Gateway: $(jq -r .aiGatewayUrl.value outputs.json)"
-          } >> "$GITHUB_STEP_SUMMARY"
+  prd:
+    needs: uat
+    uses: ./.github/workflows/reusable-platform.yml
+    secrets: inherit
+    with:
+      env_name: prd

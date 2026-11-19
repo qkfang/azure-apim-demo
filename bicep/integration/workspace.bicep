@@ -5,15 +5,18 @@
 // Resource names must be unique across the whole APIM service, hence the 'ws-' / workspace-name prefixes.
 targetScope = 'resourceGroup'
 
-import { apimNameFor, functionAppNameFor, workspaceName, workspaceApiPath } from '../settings.bicep'
+import { envType, apimNameFor, functionAppNameFor, workspaceName, workspaceApiPath } from '../settings.bicep'
 
 @description('Same base name used for platform/main.bicep.')
 param baseName string
 
+@description('Deployment environment (dev, uat or prd).')
+param envName envType
+
 var apiPath = workspaceApiPath
 
-var apimName = apimNameFor(baseName)
-var functionAppName = functionAppNameFor(baseName)
+var apimName = apimNameFor(baseName, envName)
+var functionAppName = functionAppNameFor(baseName, envName)
 
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
   name: apimName

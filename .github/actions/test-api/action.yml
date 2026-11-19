@@ -1,0 +1,65 @@
+name: Test API
+description: Resolve endpoints and keys of one environment and run the integration tests (the caller must have run checkout and azure/login).
+
+inputs:
+  env-name:
+    description: Environment to test (dev, uat or prd)
+    required: true
+  resource-group:
+    description: Resource group of the environment
+    required: true
+  base-name:
+    description: Base name of the environment
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Resolve endpoints and keys
+      shell: bash
+      env:
+        RESOURCE_GROUP: ${{ inputs.resource-group }}
+        FUNC_NAME: func-${{ inputs.base-name }}-${{ inputs.env-name }}
+        APIM_NAME: apim-${{ inputs.base-name }}-${{ inputs.env-name }}
+        AIGW_NAME: aigw-${{ inputs.base-name }}-${{ inputs.env-name }}
+      run: |
+        FUNC_HOST=$(az functionapp show -g "$RESOURCE_GROUP" -n "$FUNC_NAME" --query defaultHostName -o tsv)
+        FUNC_KEY=$(az functionapp keys list -g "$RESOURCE_GROUP" -n "$FUNC_NAME" --query functionKeys.default -o tsv)
+        APIM_URL=$(az apim show -g "$RESOURCE_GROUP" -n "$APIM_NAME" --query gatewayUrl -o tsv)
+        SUB_ID=$(az account show --query id -o tsv)
+        APIM_KEY=$(az rest --method post \
+          --url "https://management.azure.com/subscriptions/$SUB_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ApiManagement/service/$APIM_NAME/subscriptions/demo-tests/listSecrets?api-version=2023-09-01-preview" \
+          --query primaryKey -o tsv)
+        WS_KEY=$(az rest --method post \
+          --url "https://management.azure.com/subscriptions/$SUB_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ApiManagement/service/$APIM_NAME/workspaces/products-team/subscriptions/products-team-tests/listSecrets?api-version=2024-05-01" \
+          --query primaryKey -o tsv)
+        AIGW_ID="/subscriptions/$SUB_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ApiManagement/aigateways/$AIGW_NAME"
+        AIGW_HOST=$(az rest --method get --url "https://management.azure.com$AIGW_ID?api-version=2026-11-01" \
+          --query properties.frontend.defaultHostname -o tsv)
+        AIGW_KEY=$(az rest --method post \
+          --url "https://management.azure.com$AIGW_ID/apiKeys/products-mcp-client/listSecrets?api-version=2026-11-01" \
+          --query primaryKey -o tsv)
+        echo "::add-mask::$FUNC_KEY"
+        echo "::add-mask::$APIM_KEY"
+        echo "::add-mask::$WS_KEY"
+        echo "::add-mask::$AIGW_KEY"
+        {
+          echo "FUNCTION_BASE_URL=https://$FUNC_HOST/api"
+          echo "FUNCTION_KEY=$FUNC_KEY"
+          echo "APIM_BASE_URL=$APIM_URL/products-api"
+          echo "APIM_SUBSCRIPTION_KEY=$APIM_KEY"
+          echo "APIM_WORKSPACE_BASE_URL=$APIM_URL/ws-products-api"
+          echo "APIM_WORKSPACE_SUBSCRIPTION_KEY=$WS_KEY"
+          echo "APIM_MCP_URL=$APIM_URL/products-mcp/mcp"
+          echo "AI_GATEWAY_MCP_URL=https://$AIGW_HOST/default/toolservers/products/mcp"
+          echo "AI_GATEWAY_API_KEY=$AIGW_KEY"
+        } >> "$GITHUB_ENV"
+
+    - name: Run integration tests
+      shell: bash
+      working-directory: tests
+      run: npm test

@@ -1,0 +1,47 @@
+name: Reusable - apps (one environment)
+
+on:
+  workflow_call:
+    inputs:
+      env_name:
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  function-app:
+    name: Deploy Function App - infra and code (${{ inputs.env_name }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: functionapp
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # The API needs the function host key, which only exists once the code is deployed, so the API is
+      # published separately by workflow 32.
+      - name: Deploy functionapp.bicep
+        shell: bash
+        run: |
+          az deployment group create \
+            --name "func-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file bicep/apps/functionapp.bicep \
+            --parameters baseName="${{ vars.BASE_NAME }}" envName="${{ inputs.env_name }}" \
+            --query properties.outputs \
+            --output json
+
+      - name: Deploy zip package
+        uses: Azure/functions-action@v1
+        with:
+          app-name: func-${{ vars.BASE_NAME }}-${{ inputs.env_name }}
+          package: functionapp.zip
