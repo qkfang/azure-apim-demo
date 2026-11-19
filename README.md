@@ -88,9 +88,9 @@ The Function App runs on a standard (S1) Linux plan with identity-based storage 
 network access is disabled (enforced by policy in this tenant), so `main.bicep` also creates a VNet, VNet integration for
 the Function App, and private endpoints + private DNS zones for blob/queue/table storage.
 
-APIM defaults to the `BasicV2` SKU because APIM MCP servers aren't supported on `Consumption`. Override via the `apimSku`
-parameter (any tier except Consumption). An existing Consumption instance can't be changed in place; delete it or use a
-new `BASE_NAME`.
+APIM defaults to the `Developer` SKU because APIM MCP servers aren't supported on `Consumption`. Provisioning takes
+30-60 minutes. Override via the `apimSku` parameter (any tier except Consumption). An existing Consumption instance
+can't be changed in place; delete it or use a new `BASE_NAME`.
 
 ## MCP endpoint
 

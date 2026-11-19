@@ -17,9 +17,9 @@ param publisherEmail string
 @description('APIM publisher name.')
 param publisherName string = 'APIM Demo'
 
-@description('APIM SKU. MCP servers in APIM are not supported on Consumption, so the default is BasicV2 (cheapest v2 tier).')
+@description('APIM SKU. MCP servers in APIM are not supported on Consumption, so the default is Developer.')
 @allowed(['Developer', 'Basic', 'Standard', 'Premium', 'BasicV2', 'StandardV2', 'PremiumV2'])
-param apimSku string = 'BasicV2'
+param apimSku string = 'Developer'
 
 @description('Region for the Azure AI Gateway (preview: eastus2 or swedencentral).')
 @allowed(['eastus2', 'swedencentral'])
